@@ -1,13 +1,8 @@
 import os
-import numpy as np
 import cv2
 import torch
 import torchvision.transforms as transforms
 from PIL import Image
-import copy
-import torch
-
-from .randaug import RandAugment
 from config import cfg
 
 
@@ -38,14 +33,6 @@ def build_loader():
     return train_loader, val_loader
 
 
-def get_dataset(args):
-    if cfg.datasets.train_root is not None:
-        train_set = ImageDataset(istrain=True,
-                                 root=cfg.datasets.train_root,
-                                 data_size=cfg.datasets.data_size,
-                                 return_index=True) 
-        return train_set
-    return None
 
 
 class ImageDataset(torch.utils.data.Dataset):
@@ -68,12 +55,8 @@ class ImageDataset(torch.utils.data.Dataset):
                     std=[0.229, 0.224, 0.225]
                 )
 
-        # 448:600
-        # 384:510
-        # 768:
+
         if istrain:
-            # transforms.RandomApply([RandAugment(n=2, m=3, img_size=data_size)], p=0.1)
-            # RandAugment(n=2, m=3, img_size=sub_data_size)
             self.transforms = transforms.Compose([
                         transforms.Resize((510, 510), Image.BILINEAR),
                         transforms.RandomCrop((data_size, data_size)),
