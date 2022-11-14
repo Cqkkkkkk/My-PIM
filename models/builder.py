@@ -1,8 +1,7 @@
 import torch
 from typing import Union
-from torchvision.models.feature_extraction import get_graph_node_names
 
-from .pim_module import pim_module
+from models.pim_module import PluginMoodel
 
 """
 [Default Return]
@@ -83,7 +82,7 @@ def build_resnet50(pretrained: str = "./resnet50_miil_21k.pth",
     # print(backbone)
     # print(get_graph_node_names(backbone))
     
-    return pim_module.PluginMoodel(backbone = backbone,
+    return PluginMoodel(backbone = backbone,
                                    return_nodes = return_nodes,
                                    img_size = img_size,
                                    use_fpn = use_fpn,
@@ -137,7 +136,7 @@ def build_efficientnet(pretrained: bool = True,
     # print(get_graph_node_names(backbone))
     ## features.1~features.7
 
-    return pim_module.PluginMoodel(backbone = backbone,
+    return PluginMoodel(backbone = backbone,
                                    return_nodes = return_nodes,
                                    img_size = img_size,
                                    use_fpn = use_fpn,
@@ -213,7 +212,7 @@ def build_vit16(pretrained: str = "./vit_base_patch16_224_miil_21k.pth",
     posemb = torch.cat([posemb_tok, posemb_grid], dim=1)
     backbone.pos_embed = torch.nn.Parameter(posemb)
 
-    return pim_module.PluginMoodel(backbone = backbone,
+    return PluginMoodel(backbone = backbone,
                                    return_nodes = return_nodes,
                                    img_size = img_size,
                                    use_fpn = use_fpn,
@@ -265,7 +264,7 @@ def build_swintransformer(pretrained: bool = True,
     backbone.train()
     
     print("Building...")
-    return pim_module.PluginMoodel(backbone = backbone,
+    return PluginMoodel(backbone = backbone,
                                    return_nodes = None,
                                    img_size = img_size,
                                    use_fpn = use_fpn,
@@ -283,36 +282,4 @@ def build_swintransformer(pretrained: bool = True,
 
 
 if __name__ == "__main__":
-    ### ==== resnet50 ====
-    # model = build_resnet50(pretrained='./resnet50_miil_21k.pth')
-    # t = torch.randn(1, 3, 448, 448)
-    
-    ### ==== swin-t ====
-    # model = build_swintransformer(False)
-    # t = torch.randn(1, 3, 384, 384)
-
-    ### ==== vit ====
-    # model = build_vit16(pretrained='./vit_base_patch16_224_miil_21k.pth')
-    # t = torch.randn(1, 3, 448, 448)
-
-    ### ==== efficientNet ====
-    model = build_efficientnet(pretrained=False)
-    t = torch.randn(1, 3, 448, 448)
-
-    model.cuda()
-    
-    t = t.cuda()
-    outs = model(t)
-    for out in outs:
-        print(type(out))
-        print("    " , end="")
-        if type(out) == dict:
-            print([name for name in out])
-
-
-MODEL_GETTER = {
-    "resnet50":build_resnet50,
-    "swin-t":build_swintransformer,
-    "vit":build_vit16,
-    "efficient":build_efficientnet
-}
+    pass
