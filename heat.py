@@ -9,7 +9,7 @@ import numpy as np
 import argparse
 import warnings
 
-from utils.config_utils import load_yaml
+from utils.record import load_yaml
 from models.builder import MODEL_GETTER
 from utils.costom_logger import timeLogger
 

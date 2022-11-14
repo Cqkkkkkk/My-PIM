@@ -1,6 +1,8 @@
 import torch
 from typing import Union
-
+import math
+import timm
+from scipy import ndimage
 from models.pim_module import PluginMoodel
 
 """
@@ -59,7 +61,7 @@ def build_resnet50(pretrained: str = "./resnet50_miil_21k.pth",
                    comb_proj_size: Union[int, None] = None,
                    positive_adj: bool = False):
 
-    import timm
+    
 
     if return_nodes is None:
         return_nodes = {
@@ -168,7 +170,6 @@ def build_vit16(pretrained: str = "./vit_base_patch16_224_miil_21k.pth",
                 comb_proj_size: Union[int, None] = None,
                 positive_adj: bool = False):
 
-    import timm
 
     backbone = timm.create_model(
         'vit_base_patch16_224_miil_in21k', pretrained=False)
@@ -199,8 +200,7 @@ def build_vit16(pretrained: str = "./vit_base_patch16_224_miil_21k.pth",
 
     # Vit model input can transform 224 to another, we use linear
     # thanks: https://github.com/TACJu/TransFG/blob/master/models/modeling.py
-    import math
-    from scipy import ndimage
+
 
     posemb_tok, posemb_grid = backbone.pos_embed[:,
                                                  :1], backbone.pos_embed[0, 1:]
@@ -249,9 +249,7 @@ def build_swintransformer(pretrained: bool = True,
     Please check 'timm/models/swin_transformer.py' line 541 to see how to change model if your costom
     model also fail at create_feature_extractor or get_graph_node_names step.
     """
-
-    import timm
-
+    
     if num_selects is None:
         num_selects = {
             'layer1': 32,
