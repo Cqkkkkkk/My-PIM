@@ -24,9 +24,10 @@ Please check 'timm/models/swin_transformer.py' line 541 to see how to change mod
 model also fail at create_feature_extractor or get_graph_node_names step.
 """
 
+
 def load_model_weights(model, model_path):
-    ### reference https://github.com/TACJu/TransFG
-    ### thanks a lot.
+    # reference https://github.com/TACJu/TransFG
+    # thanks a lot.
     state = torch.load(model_path, map_location='cpu')
     for key in model.state_dict():
         if 'num_batches_tracked' in key:
@@ -37,7 +38,8 @@ def load_model_weights(model, model_path):
             if p.shape == ip.shape:
                 p.data.copy_(ip.data)  # Copy the data of parameters
             else:
-                print('could not load layer: {}, mismatch shape {} ,{}'.format(key, (p.shape), (ip.shape)))
+                print('could not load layer: {}, mismatch shape {} ,{}'.format(
+                    key, (p.shape), (ip.shape)))
         else:
             print('could not load layer: {}, not in checkpoint'.format(key))
     return model
@@ -45,7 +47,7 @@ def load_model_weights(model, model_path):
 
 def build_resnet50(pretrained: str = "./resnet50_miil_21k.pth",
                    return_nodes: Union[dict, None] = None,
-                   num_selects: Union[dict, None] = None, 
+                   num_selects: Union[dict, None] = None,
                    img_size: int = 448,
                    use_fpn: bool = True,
                    fpn_size: int = 512,
@@ -56,9 +58,9 @@ def build_resnet50(pretrained: str = "./resnet50_miil_21k.pth",
                    use_combiner: bool = True,
                    comb_proj_size: Union[int, None] = None,
                    positive_adj: bool = False):
-    
+
     import timm
-    
+
     if return_nodes is None:
         return_nodes = {
             'layer1.2.act3': 'layer1',
@@ -68,39 +70,40 @@ def build_resnet50(pretrained: str = "./resnet50_miil_21k.pth",
         }
     if num_selects is None:
         num_selects = {
-            'layer1':32,
-            'layer2':32,
-            'layer3':32,
-            'layer4':32
+            'layer1': 32,
+            'layer2': 32,
+            'layer3': 32,
+            'layer4': 32
         }
-    
-    backbone = timm.create_model('resnet50', pretrained=False, num_classes=11221)
-    ### original pretrained path "./models/resnet50_miil_21k.pth"
+
+    backbone = timm.create_model(
+        'resnet50', pretrained=False, num_classes=11221)
+    # original pretrained path "./models/resnet50_miil_21k.pth"
     if pretrained != "":
         backbone = load_model_weights(backbone, pretrained)
 
     # print(backbone)
     # print(get_graph_node_names(backbone))
-    
-    return PluginMoodel(backbone = backbone,
-                                   return_nodes = return_nodes,
-                                   img_size = img_size,
-                                   use_fpn = use_fpn,
-                                   fpn_size = fpn_size,
-                                   proj_type = proj_type,
-                                   upsample_type = upsample_type,
-                                   use_selection = use_selection,
-                                   num_classes = num_classes,
-                                   num_selects = num_selects, 
-                                   use_combiner = num_selects,
-                                   comb_proj_size = comb_proj_size,
-                                   positive_adj = positive_adj
-                                   )
+
+    return PluginMoodel(backbone=backbone,
+                        return_nodes=return_nodes,
+                        img_size=img_size,
+                        use_fpn=use_fpn,
+                        fpn_size=fpn_size,
+                        proj_type=proj_type,
+                        upsample_type=upsample_type,
+                        use_selection=use_selection,
+                        num_classes=num_classes,
+                        num_selects=num_selects,
+                        use_combiner=num_selects,
+                        comb_proj_size=comb_proj_size,
+                        positive_adj=positive_adj
+                        )
 
 
 def build_efficientnet(pretrained: bool = True,
                        return_nodes: Union[dict, None] = None,
-                       num_selects: Union[dict, None] = None, 
+                       num_selects: Union[dict, None] = None,
                        img_size: int = 448,
                        use_fpn: bool = True,
                        fpn_size: int = 512,
@@ -123,39 +126,37 @@ def build_efficientnet(pretrained: bool = True,
         }
     if num_selects is None:
         num_selects = {
-            'layer1':32,
-            'layer2':32,
-            'layer3':32,
-            'layer4':32
+            'layer1': 32,
+            'layer2': 32,
+            'layer3': 32,
+            'layer4': 32
         }
-    
+
     backbone = models.efficientnet_b7(pretrained=pretrained)
     backbone.train()
 
     # print(backbone)
     # print(get_graph_node_names(backbone))
-    ## features.1~features.7
+    # features.1~features.7
 
-    return PluginMoodel(backbone = backbone,
-                                   return_nodes = return_nodes,
-                                   img_size = img_size,
-                                   use_fpn = use_fpn,
-                                   fpn_size = fpn_size,
-                                   proj_type = proj_type,
-                                   upsample_type = upsample_type,
-                                   use_selection = use_selection,
-                                   num_classes = num_classes,
-                                   num_selects = num_selects, 
-                                   use_combiner = num_selects,
-                                   comb_proj_size = comb_proj_size,
-                                   positive_adj = positive_adj)
-
-
+    return PluginMoodel(backbone=backbone,
+                        return_nodes=return_nodes,
+                        img_size=img_size,
+                        use_fpn=use_fpn,
+                        fpn_size=fpn_size,
+                        proj_type=proj_type,
+                        upsample_type=upsample_type,
+                        use_selection=use_selection,
+                        num_classes=num_classes,
+                        num_selects=num_selects,
+                        use_combiner=num_selects,
+                        comb_proj_size=comb_proj_size,
+                        positive_adj=positive_adj)
 
 
 def build_vit16(pretrained: str = "./vit_base_patch16_224_miil_21k.pth",
                 return_nodes: Union[dict, None] = None,
-                num_selects: Union[dict, None] = None, 
+                num_selects: Union[dict, None] = None,
                 img_size: int = 448,
                 use_fpn: bool = True,
                 fpn_size: int = 512,
@@ -168,9 +169,10 @@ def build_vit16(pretrained: str = "./vit_base_patch16_224_miil_21k.pth",
                 positive_adj: bool = False):
 
     import timm
-    
-    backbone = timm.create_model('vit_base_patch16_224_miil_in21k', pretrained=False)
-    ### original pretrained path "./models/vit_base_patch16_224_miil_21k.pth"
+
+    backbone = timm.create_model(
+        'vit_base_patch16_224_miil_in21k', pretrained=False)
+    # original pretrained path "./models/vit_base_patch16_224_miil_21k.pth"
     if pretrained != "":
         backbone = load_model_weights(backbone, pretrained)
 
@@ -189,18 +191,19 @@ def build_vit16(pretrained: str = "./vit_base_patch16_224_miil_21k.pth",
         }
     if num_selects is None:
         num_selects = {
-            'layer1':32,
-            'layer2':32,
-            'layer3':32,
-            'layer4':32
+            'layer1': 32,
+            'layer2': 32,
+            'layer3': 32,
+            'layer4': 32
         }
 
-    ### Vit model input can transform 224 to another, we use linear
-    ### thanks: https://github.com/TACJu/TransFG/blob/master/models/modeling.py
+    # Vit model input can transform 224 to another, we use linear
+    # thanks: https://github.com/TACJu/TransFG/blob/master/models/modeling.py
     import math
     from scipy import ndimage
 
-    posemb_tok, posemb_grid = backbone.pos_embed[:, :1], backbone.pos_embed[0, 1:]
+    posemb_tok, posemb_grid = backbone.pos_embed[:,
+                                                 :1], backbone.pos_embed[0, 1:]
     posemb_grid = posemb_grid.detach().numpy()
     gs_old = int(math.sqrt(len(posemb_grid)))
     gs_new = img_size//16
@@ -212,23 +215,23 @@ def build_vit16(pretrained: str = "./vit_base_patch16_224_miil_21k.pth",
     posemb = torch.cat([posemb_tok, posemb_grid], dim=1)
     backbone.pos_embed = torch.nn.Parameter(posemb)
 
-    return PluginMoodel(backbone = backbone,
-                                   return_nodes = return_nodes,
-                                   img_size = img_size,
-                                   use_fpn = use_fpn,
-                                   fpn_size = fpn_size,
-                                   proj_type = proj_type,
-                                   upsample_type = upsample_type,
-                                   use_selection = use_selection,
-                                   num_classes = num_classes,
-                                   num_selects = num_selects, 
-                                   use_combiner = num_selects,
-                                   comb_proj_size = comb_proj_size,
-                                   positive_adj = positive_adj)
+    return PluginMoodel(backbone=backbone,
+                        return_nodes=return_nodes,
+                        img_size=img_size,
+                        use_fpn=use_fpn,
+                        fpn_size=fpn_size,
+                        proj_type=proj_type,
+                        upsample_type=upsample_type,
+                        use_selection=use_selection,
+                        num_classes=num_classes,
+                        num_selects=num_selects,
+                        use_combiner=num_selects,
+                        comb_proj_size=comb_proj_size,
+                        positive_adj=positive_adj)
 
 
 def build_swintransformer(pretrained: bool = True,
-                          num_selects: Union[dict, None] = None, 
+                          num_selects: Union[dict, None] = None,
                           img_size: int = 384,
                           use_fpn: bool = True,
                           fpn_size: int = 512,
@@ -251,34 +254,41 @@ def build_swintransformer(pretrained: bool = True,
 
     if num_selects is None:
         num_selects = {
-            'layer1':32,
-            'layer2':32,
-            'layer3':32,
-            'layer4':32
+            'layer1': 32,
+            'layer2': 32,
+            'layer3': 32,
+            'layer4': 32
         }
 
-    backbone = timm.create_model('swin_large_patch4_window12_384_in22k', pretrained=pretrained)
+    backbone = timm.create_model(
+        'swin_large_patch4_window12_384_in22k', pretrained=pretrained)
 
     # print(backbone)
     # print(get_graph_node_names(backbone))
     backbone.train()
-    
+
     print("Building...")
-    return PluginMoodel(backbone = backbone,
-                                   return_nodes = None,
-                                   img_size = img_size,
-                                   use_fpn = use_fpn,
-                                   fpn_size = fpn_size,
-                                   proj_type = proj_type,
-                                   upsample_type = upsample_type,
-                                   use_selection = use_selection,
-                                   num_classes = num_classes,
-                                   num_selects = num_selects, 
-                                   use_combiner = num_selects,
-                                   comb_proj_size = comb_proj_size,
-                                   positive_adj = positive_adj)
+    return PluginMoodel(backbone=backbone,
+                        return_nodes=None,
+                        img_size=img_size,
+                        use_fpn=use_fpn,
+                        fpn_size=fpn_size,
+                        proj_type=proj_type,
+                        upsample_type=upsample_type,
+                        use_selection=use_selection,
+                        num_classes=num_classes,
+                        num_selects=num_selects,
+                        use_combiner=num_selects,
+                        comb_proj_size=comb_proj_size,
+                        positive_adj=positive_adj)
 
 
+MODEL_GETTER = {
+    "resnet50": build_resnet50,
+    "swin-t": build_swintransformer,
+    "vit": build_vit16,
+    "efficient": build_efficientnet
+}
 
 
 if __name__ == "__main__":
