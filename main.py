@@ -20,6 +20,7 @@ import pdb
 
 warnings.simplefilter("ignore")
 
+
 def eval_freq_schedule(epoch: int):
     if epoch >= cfg.optim.epochs * 0.95:
         cfg.train.eval_freq = 1
@@ -28,44 +29,49 @@ def eval_freq_schedule(epoch: int):
     elif epoch >= cfg.optim.epochs * 0.8:
         cfg.train.eval_freq = 2
 
+
 def set_environment(args, tlogger):
-    
+
     print("Setting Environment...")
 
     cfg.train.device = "cuda:0" if torch.cuda.is_available() else "cpu"
-    
-    ### = = = =  Dataset and Data Loader = = = =  
+
+    # = = = =  Dataset and Data Loader = = = =
     tlogger.print("Building Dataloader....")
-    
+
     train_loader, val_loader = build_loader()
-    
+
     if train_loader is None and val_loader is None:
         raise ValueError("Find nothing to train or evaluate.")
 
     if train_loader is not None:
-        print("    Train Samples: {} (batch: {})".format(len(train_loader.dataset), len(train_loader)))
+        print("    Train Samples: {} (batch: {})".format(
+            len(train_loader.dataset), len(train_loader)))
     else:
         # raise ValueError("Build train loader fail, please provide legal path.")
         print("    Train Samples: 0 ~~~~~> [Only Evaluation]")
     if val_loader is not None:
-        print("    Validation Samples: {} (batch: {})".format(len(val_loader.dataset), len(val_loader)))
+        print("    Validation Samples: {} (batch: {})".format(
+            len(val_loader.dataset), len(val_loader)))
     else:
         print("    Validation Samples: 0 ~~~~~> [Only Training]")
     tlogger.print()
 
-    ### = = = =  Model = = = =  
+    # = = = =  Model = = = =
     tlogger.print("Building Model....")
     model = MODEL_GETTER[cfg.model.name](
-        use_fpn = cfg.model.use_fpn,
-        fpn_size = cfg.model.fpn_size,
-        use_selection = cfg.model.use_selection,
-        num_classes = cfg.datasets.num_classes,
-        num_selects = dict(zip(cfg.model.num_selects_layer_names, cfg.model.num_selects)),
-        use_combiner = cfg.model.use_combiner,
-    ) # about return_nodes, we use our default setting
+        use_fpn=cfg.model.use_fpn,
+        fpn_size=cfg.model.fpn_size,
+        use_selection=cfg.model.use_selection,
+        num_classes=cfg.datasets.num_classes,
+        num_selects=dict(
+            zip(cfg.model.num_selects_layer_names, cfg.model.num_selects)),
+        use_combiner=cfg.model.use_combiner,
+    )  # about return_nodes, we use our default setting
 
     if cfg.model.pretrained is not None:
-        checkpoint = torch.load(cfg.model.pretrained, map_location=torch.device('cpu'))
+        checkpoint = torch.load(cfg.model.pretrained,
+                                map_location=torch.device('cpu'))
         model.load_state_dict(checkpoint['model'])
         start_epoch = checkpoint['epoch']
     else:
@@ -74,20 +80,21 @@ def set_environment(args, tlogger):
     # model = torch.nn.DataParallel(model, device_ids=None) # device_ids : None --> use all gpus.
     model.to(cfg.train.device)
     tlogger.print()
-    
+
     """
     if you have multi-gpu device, you can use torch.nn.DataParallel in single-machine multi-GPU 
     situation and use torch.nn.parallel.DistributedDataParallel to use multi-process parallelism.
     more detail: https://pytorch.org/tutorials/beginner/dist_overview.html
     """
-    
+
     if train_loader is None:
         return train_loader, val_loader, model, None, None, None, None
-    
-    ### = = = =  Optimizer = = = =  
+
+    # = = = =  Optimizer = = = =
     tlogger.print("Building Optimizer....")
     if cfg.optim.optimizer == "SGD":
-        optimizer = torch.optim.SGD(model.parameters(), lr=cfg.optim.max_lr, nesterov=True, momentum=0.9, weight_decay=cfg.optim.wd)
+        optimizer = torch.optim.SGD(model.parameters(
+        ), lr=cfg.optim.max_lr, nesterov=True, momentum=0.9, weight_decay=cfg.optim.wd)
     elif cfg.optim.optimizer == "AdamW":
         optimizer = torch.optim.AdamW(model.parameters(), lr=cfg.optim.max_lr)
 
@@ -109,10 +116,10 @@ def set_environment(args, tlogger):
 
 
 def train(args, epoch, model, scaler, amp_context, optimizer, schedule, train_loader):
-    
+
     optimizer.zero_grad()
-    total_batchs = len(train_loader) # just for log
-    show_progress = [x/10 for x in range(11)] # just for log
+    total_batchs = len(train_loader)  # just for log
+    show_progress = [x/10 for x in range(11)]  # just for log
     progress_i = 0
     for batch_id, (ids, datas, labels) in enumerate(train_loader):
         model.train()
@@ -134,7 +141,7 @@ def train(args, epoch, model, scaler, amp_context, optimizer, schedule, train_lo
                     'preds_0', 'preds_1'
                 FPN --> return 'layer1', 'layer2', 'layer3', 'layer4' (depend on your setting)
                 ~ --> return 'ori_out'
-            
+
             [Retuen Tensor]
                 'preds_0': logit has not been selected by Selector.
                 'preds_1': logit has been selected by Selector.
@@ -144,15 +151,16 @@ def train(args, epoch, model, scaler, amp_context, optimizer, schedule, train_lo
 
             loss = 0.
             for name in outs:
-                
+
                 # pdb.set_trace()
                 if "select_" in name:
                     if not cfg.model.use_selection:
                         raise ValueError("Selector not use here.")
                     if cfg.model.lambda_s != 0:
                         S = outs[name].size(1)
-                        logit = outs[name].view(-1, cfg.datasets.num_classes).contiguous()
-                        loss_s = nn.CrossEntropyLoss()(logit, 
+                        logit = outs[name].view(-1,
+                                                cfg.datasets.num_classes).contiguous()
+                        loss_s = nn.CrossEntropyLoss()(logit,
                                                        labels.unsqueeze(1).repeat(1, S).flatten(0))
                         loss += cfg.model.lambda_s * loss_s
                     else:
@@ -164,9 +172,11 @@ def train(args, epoch, model, scaler, amp_context, optimizer, schedule, train_lo
 
                     if cfg.model.lambda_n != 0:
                         S = outs[name].size(1)
-                        logit = outs[name].view(-1, cfg.datasets.num_classes).contiguous()
+                        logit = outs[name].view(-1,
+                                                cfg.datasets.num_classes).contiguous()
                         n_preds = nn.Tanh()(logit)
-                        labels_0 = torch.zeros([batch_size * S, cfg.datasets.num_classes]) - 1
+                        labels_0 = torch.zeros(
+                            [batch_size * S, cfg.datasets.num_classes]) - 1
                         labels_0 = labels_0.to(cfg.train.device)
                         loss_n = nn.MSELoss()(n_preds, labels_0)
                         loss += cfg.model.lambda_n * loss_n
@@ -177,12 +187,13 @@ def train(args, epoch, model, scaler, amp_context, optimizer, schedule, train_lo
                     if not cfg.model.use_fpn:
                         raise ValueError("FPN not use here.")
                     if cfg.model.lambda_b != 0:
-                        ### here using 'layer1'~'layer4' is default setting, you can change to your own
-                        loss_b = nn.CrossEntropyLoss()(outs[name].mean(1), labels)
+                        # here using 'layer1'~'layer4' is default setting, you can change to your own
+                        loss_b = nn.CrossEntropyLoss()(
+                            outs[name].mean(1), labels)
                         loss += cfg.model.lambda_b * loss_b
                     else:
                         loss_b = 0.0
-                
+
                 elif "comb_outs" in name:
                     if not cfg.model.use_combiner:
                         raise ValueError("Combiner not use here.")
@@ -194,9 +205,9 @@ def train(args, epoch, model, scaler, amp_context, optimizer, schedule, train_lo
                 elif "ori_out" in name:
                     loss_ori = F.cross_entropy(outs[name], labels)
                     loss += loss_ori
-            
+
             loss /= cfg.train.update_freq
-        
+
         """ = = = = calculate gradient = = = = """
         if cfg.model.use_amp:
             scaler.scale(loss).backward()
@@ -207,7 +218,7 @@ def train(args, epoch, model, scaler, amp_context, optimizer, schedule, train_lo
         if (batch_id + 1) % cfg.train.update_freq == 0:
             if cfg.model.use_amp:
                 scaler.step(optimizer)
-                scaler.update() # next batch
+                scaler.update()  # next batch
             else:
                 optimizer.step()
             optimizer.zero_grad()
@@ -224,7 +235,8 @@ def train(args, epoch, model, scaler, amp_context, optimizer, schedule, train_lo
         train_progress = (batch_id + 1) / total_batchs
         # print(train_progress, show_progress[progress_i])
         if train_progress > show_progress[progress_i]:
-            print(".."+str(int(show_progress[progress_i] * 100)) + "%", end='', flush=True)
+            print(
+                ".."+str(int(show_progress[progress_i] * 100)) + "%", end='', flush=True)
             progress_i += 1
 
 
@@ -233,7 +245,8 @@ def main(args, tlogger):
     save model last.pt and best.pt
     """
 
-    train_loader, val_loader, model, optimizer, schedule, scaler, amp_context, start_epoch = set_environment(args, tlogger)
+    train_loader, val_loader, model, optimizer, schedule, scaler, amp_context, start_epoch = set_environment(
+        args, tlogger)
 
     best_acc = 0.0
     best_eval_name = "null"
@@ -254,7 +267,8 @@ def main(args, tlogger):
         """
         if train_loader is not None:
             tlogger.print("Start Training {} Epoch".format(epoch+1))
-            train(args, epoch, model, scaler, amp_context, optimizer, schedule, train_loader)
+            train(args, epoch, model, scaler, amp_context,
+                  optimizer, schedule, train_loader)
             tlogger.print()
         else:
             from eval import eval_and_save
@@ -264,7 +278,8 @@ def main(args, tlogger):
         eval_freq_schedule(args, epoch)
 
         model_to_save = model.module if hasattr(model, "module") else model
-        checkpoint = {"model": model_to_save.state_dict(), "optimizer": optimizer.state_dict(), "epoch":epoch}
+        checkpoint = {"model": model_to_save.state_dict(
+        ), "optimizer": optimizer.state_dict(), "epoch": epoch}
         torch.save(checkpoint, cfg.train.save_dir + "backup/last.pt")
 
         if epoch == 0 or (epoch + 1) % cfg.train.eval_freq == 0:
@@ -275,7 +290,8 @@ def main(args, tlogger):
             if val_loader is not None:
                 tlogger.print("Start Evaluating {} Epoch".format(epoch + 1))
                 acc, eval_name, accs = evaluate(args, model, val_loader)
-                tlogger.print("....BEST_ACC: {}% ({}%)".format(max(acc, best_acc), acc))
+                tlogger.print("....BEST_ACC: {}% ({}%)".format(
+                    max(acc, best_acc), acc))
                 tlogger.print()
 
             if cfg.wandb.use:
@@ -300,7 +316,6 @@ if __name__ == "__main__":
     args = parse_args()
     cfg.merge_from_file(args.cfg_file)
 
-    
     build_record_folder()
     tlogger.print()
     print(args)
