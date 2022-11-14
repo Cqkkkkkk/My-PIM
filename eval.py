@@ -168,7 +168,7 @@ def _average_top_k_result(corrects: dict, total_samples: dict, scores: list, lab
                     corrects[eval_name] += 1
 
 
-def evaluate(args, model, test_loader):
+def evaluate(model, test_loader):
     """
     [Notice: Costom Model]
     If you use costom model, please change fpn module return name (under 
@@ -257,7 +257,7 @@ def evaluate(args, model, test_loader):
     return best_top1, best_top1_name, eval_acces
 
 
-def evaluate_cm(args, model, test_loader):
+def evaluate_cm(model, test_loader):
     """
     [Notice: Costom Model]
     If you use costom model, please change fpn module return name (under
@@ -336,9 +336,9 @@ def evaluate_cm(args, model, test_loader):
 
 
 @torch.no_grad()
-def eval_and_save(args, model, val_loader, tlogger):
+def eval_and_save(model, val_loader, tlogger):
     tlogger.print("Start Evaluating")
-    acc, eval_name, eval_acces = evaluate(args, model, val_loader)
+    acc, eval_name, eval_acces = evaluate(model, val_loader)
     tlogger.print("....BEST_ACC: {} {}%".format(eval_name, acc))
     ### build records.txt
     msg = "[Evaluation Results]\n"
@@ -355,9 +355,9 @@ def eval_and_save(args, model, val_loader, tlogger):
 
 
 @torch.no_grad()
-def eval_and_cm(args, model, val_loader, tlogger):
+def eval_and_cm(model, val_loader, tlogger):
     tlogger.print("Start Evaluating")
-    acc, eval_name, eval_acces = evaluate_cm(args, model, val_loader)
+    acc, eval_name, eval_acces = evaluate_cm(model, val_loader)
     tlogger.print("....BEST_ACC: {} {}%".format(eval_name, acc))
     ### build records.txt
     msg = "[Evaluation Results]\n"

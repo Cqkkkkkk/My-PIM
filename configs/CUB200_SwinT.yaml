@@ -3,7 +3,7 @@ project:
   exp_name: T3000
 
 wandb:
-  use: False
+  use: True
   entity: Chenqin
 
 datasets:

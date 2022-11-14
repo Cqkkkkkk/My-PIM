@@ -8,3 +8,5 @@
 # python main.py --c ./configs/positive_adj.yaml
 
 python main.py --cfg configs/CUB200_SwinT.yaml
+
+# python infer.py --cfg 

@@ -10,7 +10,7 @@ from data.dataset import build_loader
 from utils.costom_logger import timeLogger
 from utils.record import build_record_folder
 from utils.lr_schedule import cosine_decay, adjust_lr, get_lr
-from eval import evaluate, cal_train_metrics
+from eval import evaluate, cal_train_metrics, eval_and_save
 
 from cmd_args import parse_args
 from config import cfg
@@ -30,7 +30,7 @@ def eval_freq_schedule(epoch: int):
         cfg.train.eval_freq = 2
 
 
-def set_environment(args, tlogger):
+def set_environment(tlogger):
 
     print("Setting Environment...")
 
@@ -77,15 +77,8 @@ def set_environment(args, tlogger):
     else:
         start_epoch = 0
 
-    # model = torch.nn.DataParallel(model, device_ids=None) # device_ids : None --> use all gpus.
     model.to(cfg.train.device)
     tlogger.print()
-
-    """
-    if you have multi-gpu device, you can use torch.nn.DataParallel in single-machine multi-GPU 
-    situation and use torch.nn.parallel.DistributedDataParallel to use multi-process parallelism.
-    more detail: https://pytorch.org/tutorials/beginner/dist_overview.html
-    """
 
     if train_loader is None:
         return train_loader, val_loader, model, None, None, None, None
@@ -115,7 +108,7 @@ def set_environment(args, tlogger):
     return train_loader, val_loader, model, optimizer, schedule, scaler, amp_context, start_epoch
 
 
-def train(args, epoch, model, scaler, amp_context, optimizer, schedule, train_loader):
+def train(epoch, model, scaler, amp_context, optimizer, schedule, train_loader):
 
     optimizer.zero_grad()
     total_batchs = len(train_loader)  # just for log
@@ -229,7 +222,7 @@ def train(args, epoch, model, scaler, amp_context, optimizer, schedule, train_lo
             msg = {}
             msg['info/epoch'] = epoch + 1
             msg['info/lr'] = get_lr(optimizer)
-            cal_train_metrics(args, msg, outs, labels, batch_size)
+            cal_train_metrics(msg, outs, labels, batch_size)
             wandb.log(msg)
 
         train_progress = (batch_id + 1) / total_batchs
@@ -240,56 +233,52 @@ def train(args, epoch, model, scaler, amp_context, optimizer, schedule, train_lo
             progress_i += 1
 
 
-def main(args, tlogger):
-    """
-    save model last.pt and best.pt
-    """
+# Train the model with options in config, saving the last and best model
+def main(tlogger):
 
-    train_loader, val_loader, model, optimizer, schedule, scaler, amp_context, start_epoch = set_environment(
-        args, tlogger)
+    train_loader, val_loader, model, optimizer, \
+        schedule, scaler, amp_context, start_epoch = set_environment(tlogger)
 
     best_acc = 0.0
     best_eval_name = "null"
 
     if cfg.wandb.use:
         wandb.init(entity=cfg.wandb.entity,
-                   project=cfg.project_name,
-                   name=cfg.project.name,
+                   project=cfg.project.name,
+                   name=cfg.project.exp_name,
                    config=cfg)
         wandb.run.summary["best_acc"] = best_acc
         wandb.run.summary["best_eval_name"] = best_eval_name
         wandb.run.summary["best_epoch"] = 0
 
+    # Train
     for epoch in range(start_epoch, cfg.optim.epochs):
 
-        """
-        Train
-        """
         if train_loader is not None:
             tlogger.print("Start Training {} Epoch".format(epoch+1))
-            train(args, epoch, model, scaler, amp_context,
+            train(epoch, model, scaler, amp_context,
                   optimizer, schedule, train_loader)
             tlogger.print()
         else:
-            from eval import eval_and_save
-            eval_and_save(args, model, val_loader)
+            eval_and_save(model, val_loader)
             break
 
-        eval_freq_schedule(args, epoch)
+        eval_freq_schedule(epoch)
 
         model_to_save = model.module if hasattr(model, "module") else model
-        checkpoint = {"model": model_to_save.state_dict(
-        ), "optimizer": optimizer.state_dict(), "epoch": epoch}
+        checkpoint = {
+            "model": model_to_save.state_dict(),
+            "optimizer": optimizer.state_dict(),
+            "epoch": epoch
+        }
         torch.save(checkpoint, cfg.train.save_dir + "backup/last.pt")
 
+        # Evaluation
         if epoch == 0 or (epoch + 1) % cfg.train.eval_freq == 0:
-            """
-            Evaluation
-            """
             acc = -1
             if val_loader is not None:
                 tlogger.print("Start Evaluating {} Epoch".format(epoch + 1))
-                acc, eval_name, accs = evaluate(args, model, val_loader)
+                acc, eval_name, accs = evaluate(model, val_loader)
                 tlogger.print("....BEST_ACC: {}% ({}%)".format(
                     max(acc, best_acc), acc))
                 tlogger.print()
@@ -310,7 +299,6 @@ def main(args, tlogger):
 if __name__ == "__main__":
 
     tlogger = timeLogger()
-
     tlogger.print("Reading Config...")
 
     args = parse_args()
@@ -318,5 +306,5 @@ if __name__ == "__main__":
 
     build_record_folder()
     tlogger.print()
-    print(args)
-    main(args, tlogger)
+
+    main(tlogger)
