@@ -7,16 +7,17 @@ import os
 from sklearn.metrics import confusion_matrix
 import matplotlib.pyplot as plt
 
+from config import cfg
 
 @torch.no_grad()
-def cal_train_metrics(args, msg: dict, outs: dict, labels: torch.Tensor, batch_size: int):
+def cal_train_metrics(msg: dict, outs: dict, labels: torch.Tensor, batch_size: int):
     """
     only present top-1 training accuracy
     """
 
     total_loss = 0.0
 
-    if args.use_fpn:
+    if cfg.model.use_fpn:
         for i in range(1, 5):
             acc = top_k_corrects(outs["layer"+str(i)].mean(1), labels, tops=[1])["top-1"] / batch_size
             acc = round(acc * 100, 2)
@@ -25,18 +26,18 @@ def cal_train_metrics(args, msg: dict, outs: dict, labels: torch.Tensor, batch_s
             msg["train_loss/layer{}_loss".format(i)] = loss.item()
             total_loss += loss.item()
 
-    if args.use_selection:
+    if cfg.model.use_selection:
         for name in outs:
             if "select_" not in name:
                 continue
             B, S, _ = outs[name].size()
-            logit = outs[name].view(-1, args.num_classes)
+            logit = outs[name].view(-1, cfg.datasets.num_classes)
             labels_0 = labels.unsqueeze(1).repeat(1, S).flatten(0)
             acc = top_k_corrects(logit, labels_0, tops=[1])["top-1"] / (B*S)
             acc = round(acc * 100, 2)
             msg["train_acc/{}_acc".format(name)] = acc
-            labels_0 = torch.zeros([B * S, args.num_classes]) - 1
-            labels_0 = labels_0.to(args.device)
+            labels_0 = torch.zeros([B * S, cfg.datasets.num_classes]) - 1
+            labels_0 = labels_0.to(cfg.train.device)
             loss = F.mse_loss(F.tanh(logit), labels_0)
             msg["train_loss/{}_loss".format(name)] = loss.item()
             total_loss += loss.item()
@@ -45,7 +46,7 @@ def cal_train_metrics(args, msg: dict, outs: dict, labels: torch.Tensor, batch_s
             if "drop_" not in name:
                 continue
             B, S, _ = outs[name].size()
-            logit = outs[name].view(-1, args.num_classes)
+            logit = outs[name].view(-1, cfg.datasets.num_classes)
             labels_1 = labels.unsqueeze(1).repeat(1, S).flatten(0)
             acc = top_k_corrects(logit, labels_1, tops=[1])["top-1"] / (B*S)
             acc = round(acc * 100, 2)
@@ -54,7 +55,7 @@ def cal_train_metrics(args, msg: dict, outs: dict, labels: torch.Tensor, batch_s
             msg["train_loss/{}_loss".format(name)] = loss.item()
             total_loss += loss.item()
 
-    if args.use_combiner:
+    if cfg.model.use_combiner:
         acc = top_k_corrects(outs['comb_outs'], labels, tops=[1])["top-1"] / batch_size
         acc = round(acc * 100, 2)
         msg["train_acc/combiner_acc"] = acc
@@ -192,23 +193,23 @@ def evaluate(args, model, test_loader):
             
             score_names = []
             scores = []
-            datas = datas.to(args.device)
+            datas = datas.to(cfg.train.device)
 
             outs = model(datas)
 
-            if args.use_fpn:
+            if cfg.model.use_fpn:
                 for i in range(1, 5):
                     this_name = "layer" + str(i)
                     _cal_evalute_metric(corrects, total_samples, outs[this_name].mean(1), labels, this_name, scores, score_names)
             
             ### for research
-            if args.use_selection:
+            if cfg.model.use_selection:
                 for name in outs:
                     if "select_" not in name:
                         continue
                     this_name = name
                     S = outs[name].size(1)
-                    logit = outs[name].view(-1, args.num_classes)
+                    logit = outs[name].view(-1, cfg.datasets.num_classes)
                     labels_1 = labels.unsqueeze(1).repeat(1, S).flatten(0)
                     _cal_evalute_metric(corrects, total_samples, logit, labels_1, this_name)
                 
@@ -217,11 +218,11 @@ def evaluate(args, model, test_loader):
                         continue
                     this_name = name
                     S = outs[name].size(1)
-                    logit = outs[name].view(-1, args.num_classes)
+                    logit = outs[name].view(-1, cfg.datasets.num_classes)
                     labels_0 = labels.unsqueeze(1).repeat(1, S).flatten(0)
                     _cal_evalute_metric(corrects, total_samples, logit, labels_0, this_name)
 
-            if args.use_combiner:
+            if cfg.model.use_combiner:
                 this_name = "combiner"
                 _cal_evalute_metric(corrects, total_samples, outs["comb_outs"], labels, this_name, scores, score_names)
 
@@ -278,14 +279,14 @@ def evaluate_cm(args, model, test_loader):
 
             score_names = []
             scores = []
-            datas = datas.to(args.device)
+            datas = datas.to(cfg.train.device)
             outs = model(datas)
 
             # if args.use_fpn and (0 < args.highest < 5):
             #     this_name = "layer" + str(args.highest)
             #     _cal_evalute_metric(corrects, total_samples, outs[this_name].mean(1), labels, this_name, scores, score_names)
 
-            if args.use_combiner:
+            if cfg.model.use_combiner:
                 this_name = "combiner"
                 _cal_evalute_metric(corrects, total_samples, outs["comb_outs"], labels, this_name, scores, score_names)
 
@@ -297,7 +298,7 @@ def evaluate_cm(args, model, test_loader):
                                 scores[0][i][scores[0][i].argmax().item()].item()])  # 图片路径，标签，预测标签，得分
 
         """ wirte xlsx"""
-        writer = pd.ExcelWriter(args.save_dir + 'infer_result.xlsx')
+        writer = pd.ExcelWriter(cfg.train.save_dir + 'infer_result.xlsx')
         df = pd.DataFrame(results, columns=["id", "original_label", "predict_label", "goal"])
         df.to_excel(writer, index=False, sheet_name="Sheet1")
         writer.save()
@@ -325,11 +326,11 @@ def evaluate_cm(args, model, test_loader):
         y_predict = results_mat[:, 2].transpose().tolist()[0]
         y_predict = list(map(int, y_predict))
 
-        folders = os.listdir(args.val_root)
+        folders = os.listdir(cfg.datasets.val_root)
         folders.sort()  # sort by alphabet
         print("[dataset] class:", folders)
         df_confusion = confusion_matrix(y_actual, y_predict)
-        plot_confusion_matrix(df_confusion, folders, args.save_dir + "infer_cm.png", accuracy=best_top1)
+        plot_confusion_matrix(df_confusion, folders, cfg.train.save_dir + "infer_cm.png", accuracy=best_top1)
 
     return best_top1, best_top1_name, eval_acces
 
@@ -341,7 +342,7 @@ def eval_and_save(args, model, val_loader, tlogger):
     tlogger.print("....BEST_ACC: {} {}%".format(eval_name, acc))
     ### build records.txt
     msg = "[Evaluation Results]\n"
-    msg += "Project: {}, Experiment: {}\n".format(args.project_name, args.exp_name)
+    msg += "Project: {}, Experiment: {}\n".format(cfg.project.name, cfg.project.exp_name)
     msg += "Samples: {}\n".format(len(val_loader.dataset))
     msg += "\n"
     for name in eval_acces:
@@ -349,7 +350,7 @@ def eval_and_save(args, model, val_loader, tlogger):
     msg += "\n"
     msg += "BEST_ACC: {} {}% ".format(eval_name, acc)
 
-    with open(args.save_dir + "eval_results.txt", "w") as ftxt:
+    with open(cfg.train.save_dir + "eval_results.txt", "w") as ftxt:
         ftxt.write(msg)
 
 
@@ -360,7 +361,7 @@ def eval_and_cm(args, model, val_loader, tlogger):
     tlogger.print("....BEST_ACC: {} {}%".format(eval_name, acc))
     ### build records.txt
     msg = "[Evaluation Results]\n"
-    msg += "Project: {}, Experiment: {}\n".format(args.project_name, args.exp_name)
+    msg += "Project: {}, Experiment: {}\n".format(cfg.project.name, cfg.project.exp_name)
     msg += "Samples: {}\n".format(len(val_loader.dataset))
     msg += "\n"
     for name in eval_acces:
@@ -368,7 +369,7 @@ def eval_and_cm(args, model, val_loader, tlogger):
     msg += "\n"
     msg += "BEST_ACC: {} {}% ".format(eval_name, acc)
 
-    with open(args.save_dir + "infer_results.txt", "w") as ftxt:
+    with open(cfg.train.save_dir + "infer_results.txt", "w") as ftxt:
         ftxt.write(msg)
 
 

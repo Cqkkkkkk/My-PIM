@@ -8,24 +8,42 @@ import copy
 import torch
 
 from .randaug import RandAugment
+from config import cfg
 
 
-def build_loader(args):
+def build_loader():
     train_set, train_loader = None, None
-    if args.train_root is not None:
-        train_set = ImageDataset(istrain=True, root=args.train_root, data_size=args.data_size, return_index=True)
-        train_loader = torch.utils.data.DataLoader(train_set, num_workers=args.num_workers, shuffle=True, batch_size=args.batch_size)
+
+    if cfg.datasets.train_root is not None:
+        train_set = ImageDataset(istrain=True,
+                                 root=cfg.datasets.train_root,
+                                 data_size=cfg.datasets.data_size,
+                                 return_index=True)
+        train_loader = torch.utils.data.DataLoader(train_set,
+                                                   num_workers=cfg.datasets.num_workers,
+                                                   shuffle=True,
+                                                   batch_size=cfg.datasets.batch_size)
 
     val_set, val_loader = None, None
-    if args.val_root is not None:
-        val_set = ImageDataset(istrain=False, root=args.val_root, data_size=args.data_size, return_index=True)
-        val_loader = torch.utils.data.DataLoader(val_set, num_workers=1, shuffle=True, batch_size=args.batch_size)
+    if cfg.datasets.val_root is not None:
+        val_set = ImageDataset(istrain=False,
+                               root=cfg.datasets.val_root,
+                               data_size=cfg.datasets.data_size,
+                               return_index=True)
+        val_loader = torch.utils.data.DataLoader(val_set,
+                                                 num_workers=1,
+                                                 shuffle=True,
+                                                 batch_size=cfg.datasets.batch_size)
 
     return train_loader, val_loader
 
+
 def get_dataset(args):
-    if args.train_root is not None:
-        train_set = ImageDataset(istrain=True, root=args.train_root, data_size=args.data_size, return_index=True)
+    if cfg.datasets.train_root is not None:
+        train_set = ImageDataset(istrain=True,
+                                 root=cfg.datasets.train_root,
+                                 data_size=cfg.datasets.data_size,
+                                 return_index=True) 
         return train_set
     return None
 

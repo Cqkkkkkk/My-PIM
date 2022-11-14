@@ -2,20 +2,22 @@ import yaml
 import os
 import argparse
 
+from config import cfg
+
 def load_yaml(args, yml):
     with open(yml, 'r', encoding='utf-8') as fyml:
         dic = yaml.load(fyml.read(), Loader=yaml.Loader)
         for k in dic:
             setattr(args, k, dic[k])
 
-def build_record_folder(args):
+def build_record_folder():
 
     if not os.path.isdir("./records/"):
         os.mkdir("./records/")
     
-    args.save_dir = "./records/" + args.project_name + "/" + args.exp_name + "/"
-    os.makedirs(args.save_dir, exist_ok=True)
-    os.makedirs(args.save_dir + "backup/", exist_ok=True)
+    cfg.train.save_dir = "./records/" + cfg.project.name + "/" + cfg.project.exp_name + "/"
+    os.makedirs(cfg.train.save_dir, exist_ok=True)
+    os.makedirs(cfg.train.save_dir + "backup/", exist_ok=True)
 
 def get_args(with_deepspeed: bool=False):
 

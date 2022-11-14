@@ -12,28 +12,32 @@ from utils.config_utils import load_yaml, build_record_folder, get_args
 from utils.lr_schedule import cosine_decay, adjust_lr, get_lr
 from eval import evaluate, cal_train_metrics
 
+from cmd_args import parse_args
+from config import cfg
+
+
 import pdb
 
 warnings.simplefilter("ignore")
 
-def eval_freq_schedule(args, epoch: int):
-    if epoch >= args.max_epochs * 0.95:
-        args.eval_freq = 1
-    elif epoch >= args.max_epochs * 0.9:
-        args.eval_freq = 1
-    elif epoch >= args.max_epochs * 0.8:
-        args.eval_freq = 2
+def eval_freq_schedule(epoch: int):
+    if epoch >= cfg.optim.epochs * 0.95:
+        cfg.train.eval_freq = 1
+    elif epoch >= cfg.optim.epochs * 0.9:
+        cfg.train.eval_freq = 1
+    elif epoch >= cfg.optim.epochs * 0.8:
+        cfg.train.eval_freq = 2
 
 def set_environment(args, tlogger):
     
     print("Setting Environment...")
 
-    args.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    cfg.train.device = "cuda:0" if torch.cuda.is_available() else "cpu"
     
     ### = = = =  Dataset and Data Loader = = = =  
     tlogger.print("Building Dataloader....")
     
-    train_loader, val_loader = build_loader(args)
+    train_loader, val_loader = build_loader()
     
     if train_loader is None and val_loader is None:
         raise ValueError("Find nothing to train or evaluate.")
@@ -51,23 +55,24 @@ def set_environment(args, tlogger):
 
     ### = = = =  Model = = = =  
     tlogger.print("Building Model....")
-    model = MODEL_GETTER[args.model_name](
-        use_fpn = args.use_fpn,
-        fpn_size = args.fpn_size,
-        use_selection = args.use_selection,
-        num_classes = args.num_classes,
-        num_selects = args.num_selects,
-        use_combiner = args.use_combiner,
+    model = MODEL_GETTER[cfg.model.name](
+        use_fpn = cfg.model.use_fpn,
+        fpn_size = cfg.model.fpn_size,
+        use_selection = cfg.model.use_selection,
+        num_classes = cfg.datasets.num_classes,
+        num_selects = dict(zip(cfg.model.num_selects_layer_names, cfg.model.num_selects)),
+        use_combiner = cfg.model.use_combiner,
     ) # about return_nodes, we use our default setting
-    if args.pretrained is not None:
-        checkpoint = torch.load(args.pretrained, map_location=torch.device('cpu'))
+
+    if cfg.model.pretrained is not None:
+        checkpoint = torch.load(cfg.model.pretrained, map_location=torch.device('cpu'))
         model.load_state_dict(checkpoint['model'])
         start_epoch = checkpoint['epoch']
     else:
         start_epoch = 0
 
     # model = torch.nn.DataParallel(model, device_ids=None) # device_ids : None --> use all gpus.
-    model.to(args.device)
+    model.to(cfg.train.device)
     tlogger.print()
     
     """
@@ -81,19 +86,19 @@ def set_environment(args, tlogger):
     
     ### = = = =  Optimizer = = = =  
     tlogger.print("Building Optimizer....")
-    if args.optimizer == "SGD":
-        optimizer = torch.optim.SGD(model.parameters(), lr=args.max_lr, nesterov=True, momentum=0.9, weight_decay=args.wdecay)
-    elif args.optimizer == "AdamW":
-        optimizer = torch.optim.AdamW(model.parameters(), lr=args.max_lr)
+    if cfg.optim.optimizer == "SGD":
+        optimizer = torch.optim.SGD(model.parameters(), lr=cfg.optim.max_lr, nesterov=True, momentum=0.9, weight_decay=cfg.optim.wd)
+    elif cfg.optim.optimizer == "AdamW":
+        optimizer = torch.optim.AdamW(model.parameters(), lr=cfg.optim.max_lr)
 
-    if args.pretrained is not None:
+    if cfg.model.pretrained is not None:
         optimizer.load_state_dict(checkpoint['optimizer'])
 
     tlogger.print()
 
-    schedule = cosine_decay(args, len(train_loader))
+    schedule = cosine_decay(len(train_loader))
 
-    if args.use_amp:
+    if cfg.model.use_amp:
         scaler = torch.cuda.amp.GradScaler()
         amp_context = torch.cuda.amp.autocast
     else:
@@ -118,7 +123,7 @@ def train(args, epoch, model, scaler, amp_context, optimizer, schedule, train_lo
         batch_size = labels.size(0)
 
         """ = = = = forward and calculate loss = = = = """
-        datas, labels = datas.to(args.device), labels.to(args.device)
+        datas, labels = datas.to(cfg.train.device), labels.to(cfg.train.device)
 
         with amp_context():
             """
@@ -142,65 +147,65 @@ def train(args, epoch, model, scaler, amp_context, optimizer, schedule, train_lo
                 
                 # pdb.set_trace()
                 if "select_" in name:
-                    if not args.use_selection:
+                    if not cfg.model.use_selection:
                         raise ValueError("Selector not use here.")
-                    if args.lambda_s != 0:
+                    if cfg.model.lambda_s != 0:
                         S = outs[name].size(1)
-                        logit = outs[name].view(-1, args.num_classes).contiguous()
+                        logit = outs[name].view(-1, cfg.datasets.num_classes).contiguous()
                         loss_s = nn.CrossEntropyLoss()(logit, 
                                                        labels.unsqueeze(1).repeat(1, S).flatten(0))
-                        loss += args.lambda_s * loss_s
+                        loss += cfg.model.lambda_s * loss_s
                     else:
                         loss_s = 0.0
 
                 elif "drop_" in name:
-                    if not args.use_selection:
+                    if not cfg.model.use_selection:
                         raise ValueError("Selector not use here.")
 
-                    if args.lambda_n != 0:
+                    if cfg.model.lambda_n != 0:
                         S = outs[name].size(1)
-                        logit = outs[name].view(-1, args.num_classes).contiguous()
+                        logit = outs[name].view(-1, cfg.datasets.num_classes).contiguous()
                         n_preds = nn.Tanh()(logit)
-                        labels_0 = torch.zeros([batch_size * S, args.num_classes]) - 1
-                        labels_0 = labels_0.to(args.device)
+                        labels_0 = torch.zeros([batch_size * S, cfg.datasets.num_classes]) - 1
+                        labels_0 = labels_0.to(cfg.train.device)
                         loss_n = nn.MSELoss()(n_preds, labels_0)
-                        loss += args.lambda_n * loss_n
+                        loss += cfg.model.lambda_n * loss_n
                     else:
                         loss_n = 0.0
 
                 elif "layer" in name:
-                    if not args.use_fpn:
+                    if not cfg.model.use_fpn:
                         raise ValueError("FPN not use here.")
-                    if args.lambda_b != 0:
+                    if cfg.model.lambda_b != 0:
                         ### here using 'layer1'~'layer4' is default setting, you can change to your own
                         loss_b = nn.CrossEntropyLoss()(outs[name].mean(1), labels)
-                        loss += args.lambda_b * loss_b
+                        loss += cfg.model.lambda_b * loss_b
                     else:
                         loss_b = 0.0
                 
                 elif "comb_outs" in name:
-                    if not args.use_combiner:
+                    if not cfg.model.use_combiner:
                         raise ValueError("Combiner not use here.")
 
-                    if args.lambda_c != 0:
+                    if cfg.model.lambda_c != 0:
                         loss_c = nn.CrossEntropyLoss()(outs[name], labels)
-                        loss += args.lambda_c * loss_c
+                        loss += cfg.model.lambda_c * loss_c
 
                 elif "ori_out" in name:
                     loss_ori = F.cross_entropy(outs[name], labels)
                     loss += loss_ori
             
-            loss /= args.update_freq
+            loss /= cfg.train.update_freq
         
         """ = = = = calculate gradient = = = = """
-        if args.use_amp:
+        if cfg.model.use_amp:
             scaler.scale(loss).backward()
         else:
             loss.backward()
 
         """ = = = = update model = = = = """
-        if (batch_id + 1) % args.update_freq == 0:
-            if args.use_amp:
+        if (batch_id + 1) % cfg.train.update_freq == 0:
+            if cfg.model.use_amp:
                 scaler.step(optimizer)
                 scaler.update() # next batch
             else:
@@ -208,7 +213,7 @@ def train(args, epoch, model, scaler, amp_context, optimizer, schedule, train_lo
             optimizer.zero_grad()
 
         """ log (MISC) """
-        if args.use_wandb and ((batch_id + 1) % args.log_freq == 0):
+        if cfg.wandb.use and ((batch_id + 1) % cfg.log.log_freq == 0):
             model.eval()
             msg = {}
             msg['info/epoch'] = epoch + 1
@@ -233,16 +238,16 @@ def main(args, tlogger):
     best_acc = 0.0
     best_eval_name = "null"
 
-    if args.use_wandb:
-        wandb.init(entity=args.wandb_entity,
-                   project=args.project_name,
-                   name=args.exp_name,
-                   config=args)
+    if cfg.wandb.use:
+        wandb.init(entity=cfg.wandb.entity,
+                   project=cfg.project_name,
+                   name=cfg.project.name,
+                   config=cfg)
         wandb.run.summary["best_acc"] = best_acc
         wandb.run.summary["best_eval_name"] = best_eval_name
         wandb.run.summary["best_epoch"] = 0
 
-    for epoch in range(start_epoch, args.max_epochs):
+    for epoch in range(start_epoch, cfg.optim.epochs):
 
         """
         Train
@@ -260,9 +265,9 @@ def main(args, tlogger):
 
         model_to_save = model.module if hasattr(model, "module") else model
         checkpoint = {"model": model_to_save.state_dict(), "optimizer": optimizer.state_dict(), "epoch":epoch}
-        torch.save(checkpoint, args.save_dir + "backup/last.pt")
+        torch.save(checkpoint, cfg.train.save_dir + "backup/last.pt")
 
-        if epoch == 0 or (epoch + 1) % args.eval_freq == 0:
+        if epoch == 0 or (epoch + 1) % cfg.train.eval_freq == 0:
             """
             Evaluation
             """
@@ -273,14 +278,14 @@ def main(args, tlogger):
                 tlogger.print("....BEST_ACC: {}% ({}%)".format(max(acc, best_acc), acc))
                 tlogger.print()
 
-            if args.use_wandb:
+            if cfg.wandb.use:
                 wandb.log(accs)
 
             if acc > best_acc:
                 best_acc = acc
                 best_eval_name = eval_name
-                torch.save(checkpoint, args.save_dir + "backup/best.pt")
-            if args.use_wandb:
+                torch.save(checkpoint, cfg.train.save_dir + "backup/best.pt")
+            if cfg.wandb.use:
                 wandb.run.summary["best_acc"] = best_acc
                 wandb.run.summary["best_eval_name"] = best_eval_name
                 wandb.run.summary["best_epoch"] = epoch + 1
@@ -291,10 +296,12 @@ if __name__ == "__main__":
     tlogger = timeLogger()
 
     tlogger.print("Reading Config...")
-    args = get_args()
-    assert args.c != "", "Please provide config file (.yaml)"
-    load_yaml(args, args.c)
-    build_record_folder(args)
+
+    args = parse_args()
+    cfg.merge_from_file(args.cfg_file)
+
+    
+    build_record_folder()
     tlogger.print()
     print(args)
     main(args, tlogger)
