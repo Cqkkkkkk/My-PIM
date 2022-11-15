@@ -3,6 +3,7 @@ import torch.nn as nn
 from typing import Union
 import copy
 import pdb
+from config import cfg
 
 
 # 比较低效的实现方法，也不够好。期待从这个角度进行改进。
@@ -94,9 +95,11 @@ class GCNCombiner(nn.Module):
         k1 = self.conv_k1(hs).mean(1)
         A1 = self.tanh(q1.unsqueeze(-1) - k1.unsqueeze(1))
         A1 = self.adj1 + A1 * self.alpha1
-
-        if self.positive_adj:
+        
+        if cfg.model.positive_adj == 'abs':
             A1 = torch.abs(A1)
+        elif cfg.model.positive_adj == 'exp':
+            A1 = torch.exp(A1)
 
         # graph convolution
         hs = self.conv1(hs)

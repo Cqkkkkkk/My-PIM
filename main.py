@@ -303,7 +303,7 @@ if __name__ == "__main__":
 
     args = parse_args()
     cfg.merge_from_file(args.cfg_file)
-
+    print(cfg)
     build_record_folder()
     tlogger.print()
 

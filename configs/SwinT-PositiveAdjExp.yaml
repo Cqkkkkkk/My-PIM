@@ -1,0 +1,48 @@
+project:
+  name: CUB200
+  exp_name: Positive-Adj-Exp
+
+wandb:
+  use: True
+  entity: Chenqin
+
+datasets:
+  train_root: ../datasets/CUB/sortedImages/train/
+  val_root: ../datasets/CUB/sortedImages/test/
+  data_size: 384
+  num_workers: 2
+  batch_size: 2
+  num_classes: 200
+
+model:
+  name: swin-t
+  pretrained: ~
+  use_amp: True
+  use_fpn: True
+  fpn_size: 1536
+  use_selection: True
+  num_selects_layer_names : ['layer1', 'layer2', 'layer3', 'layer4']
+  num_selects: [2048, 512, 128, 32] 
+  use_combiner: True
+  positive_adj: 
+  lambda_b: 0.5
+  lambda_s: 0.0
+  lambda_n: 5.0
+  lambda_c: 1.0
+
+  positive_adj: exp
+
+optim:
+  optimizer: SGD
+  max_lr: 0.0005
+  wd: 0.0005
+  epochs: 50
+  warmup_batches: 800
+
+
+train:
+  update_freq: 2
+  eval_freq: 10
+
+log:
+  log_freq: 100

@@ -1,12 +1,8 @@
-# Train from sctrach
-# python main.py --c ./configs/CUB200_SwinT.yaml
+# Base
+# python main.py --cfg configs/SwinT-Base.yaml
 
-# Train with pretrained Swin-T
-# python main.py --c ./configs/CUB200_SwinTPretrained.yaml
+# Positive adj: Abs
+python main.py --cfg configs/SwinT-PositiveAdjAbs.yaml
 
-# Train from sctrach with positive adj
-# python main.py --c ./configs/positive_adj.yaml
-
-python main.py --cfg configs/SwinT-Base.yaml
-
-# python infer.py --cfg 
+# Positive adj: Exp
+python main.py --cfg configs/SwinT-PositiveAdjExp.yaml
