@@ -7,9 +7,9 @@ import warnings
 
 from models.builder import MODEL_GETTER
 from data.dataset import build_loader
-from utils.costom_logger import timeLogger
+from utils.logger import timeLogger
 from utils.record import build_record_folder
-from utils.lr_schedule import cosine_decay, adjust_lr, get_lr
+from utils.scheduler import CosineDecayLRScheduler, adjust_lr, get_lr, eval_freq_schedule
 from eval import evaluate, cal_train_metrics, eval_and_save
 
 from cmd_args import parse_args
@@ -21,43 +21,34 @@ import pdb
 warnings.simplefilter("ignore")
 
 
-def eval_freq_schedule(epoch: int):
-    if epoch >= cfg.optim.epochs * 0.95:
-        cfg.train.eval_freq = 1
-    elif epoch >= cfg.optim.epochs * 0.9:
-        cfg.train.eval_freq = 1
-    elif epoch >= cfg.optim.epochs * 0.8:
-        cfg.train.eval_freq = 2
-
-
 def set_environment(tlogger):
 
     print("Setting Environment...")
+    cfg.train.device = "cuda:1" if torch.cuda.is_available() else "cpu"
 
-    cfg.train.device = "cuda:0" if torch.cuda.is_available() else "cpu"
+    # ------------------------------------------------------------------------ #
+    # Dataset and Data Loader
+    # ------------------------------------------------------------------------ #
 
-    # = = = =  Dataset and Data Loader = = = =
     tlogger.print("Building Dataloader....")
-
     train_loader, val_loader = build_loader()
-
     if train_loader is None and val_loader is None:
         raise ValueError("Find nothing to train or evaluate.")
-
     if train_loader is not None:
-        print("    Train Samples: {} (batch: {})".format(
-            len(train_loader.dataset), len(train_loader)))
+        print("Train Samples: {} (batch: {})".format(len(train_loader.dataset), len(train_loader)))
     else:
-        # raise ValueError("Build train loader fail, please provide legal path.")
-        print("    Train Samples: 0 ~~~~~> [Only Evaluation]")
+        print("Train Samples: 0 ----> [Only Evaluation]")
     if val_loader is not None:
-        print("    Validation Samples: {} (batch: {})".format(
-            len(val_loader.dataset), len(val_loader)))
+        print("Validation Samples: {} (batch: {})".format(len(val_loader.dataset), len(val_loader)))
     else:
-        print("    Validation Samples: 0 ~~~~~> [Only Training]")
+        print("Validation Samples: 0 ----> [Only Training]")
+
     tlogger.print()
 
-    # = = = =  Model = = = =
+    # ------------------------------------------------------------------------ #
+    # Model
+    # ------------------------------------------------------------------------ #
+
     tlogger.print("Building Model....")
     model = MODEL_GETTER[cfg.model.name](
         use_fpn=cfg.model.use_fpn,
@@ -67,37 +58,45 @@ def set_environment(tlogger):
         num_selects=dict(
             zip(cfg.model.num_selects_layer_names, cfg.model.num_selects)),
         use_combiner=cfg.model.use_combiner,
-    )  # about return_nodes, we use our default setting
+    )
 
     if cfg.model.pretrained is not None:
-        checkpoint = torch.load(cfg.model.pretrained,
-                                map_location=torch.device('cpu'))
-        model.load_state_dict(checkpoint['model'])
-        start_epoch = checkpoint['epoch']
+        ckpt = torch.load(cfg.model.pretrained, map_location=torch.device('cpu'))
+        model.load_state_dict(ckpt['model'])
+        start_epoch = ckpt['epoch']
     else:
         start_epoch = 0
 
     model.to(cfg.train.device)
     tlogger.print()
 
+    # No Optimizer is specified during evaluation
     if train_loader is None:
         return train_loader, val_loader, model, None, None, None, None
 
-    # = = = =  Optimizer = = = =
+    # ------------------------------------------------------------------------ #
+    # Optimizer
+    # ------------------------------------------------------------------------ #
+
     tlogger.print("Building Optimizer....")
     if cfg.optim.optimizer == "SGD":
-        optimizer = torch.optim.SGD(model.parameters(
-        ), lr=cfg.optim.max_lr, nesterov=True, momentum=0.9, weight_decay=cfg.optim.wd)
+        optimizer = torch.optim.SGD(model.parameters(),
+                                    lr=cfg.optim.max_lr,
+                                    nesterov=True,
+                                    momentum=0.9,
+                                    weight_decay=cfg.optim.wd)
+    elif cfg.optim.optimizer == 'Adam':
+        optimizer = torch.optim.Adam(model.parameters(), lr=cfg.optim.max_lr, weight_decay=cfg.optim.wd)
     elif cfg.optim.optimizer == "AdamW":
-        optimizer = torch.optim.AdamW(model.parameters(), lr=cfg.optim.max_lr)
+        optimizer = torch.optim.AdamW(model.parameters(), lr=cfg.optim.max_lr, weight_decay=cfg.optim.wd)
 
     if cfg.model.pretrained is not None:
-        optimizer.load_state_dict(checkpoint['optimizer'])
+        optimizer.load_state_dict(ckpt['optimizer'])
+    scheduler = CosineDecayLRScheduler()
 
-    tlogger.print()
+    schedule = scheduler(len(train_loader))
 
-    schedule = cosine_decay(len(train_loader))
-
+    pdb.set_trace()
     if cfg.model.use_amp:
         scaler = torch.cuda.amp.GradScaler()
         amp_context = torch.cuda.amp.autocast
