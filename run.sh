@@ -7,6 +7,6 @@
 # Train from sctrach with positive adj
 # python main.py --c ./configs/positive_adj.yaml
 
-python main.py --cfg configs/CUB200_SwinT.yaml
+python main.py --cfg configs/SwinT-Base.yaml
 
 # python infer.py --cfg 

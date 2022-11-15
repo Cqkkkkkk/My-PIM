@@ -1,6 +1,6 @@
 project:
   name: CUB200
-  exp_name: T3000
+  exp_name: Base
 
 wandb:
   use: True
