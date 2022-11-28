@@ -3,7 +3,7 @@ import warnings
 
 from models.builder import MODEL_GETTER
 from data.dataset import build_loader
-from utils.costom_logger import timeLogger
+from utils.logger import timeLogger
 from utils.record import build_record_folder
 from eval import eval_and_cm
 
@@ -39,7 +39,7 @@ def set_environment(tlogger):
             zip(cfg.model.num_selects_layer_names, cfg.model.num_selects)),
         use_combiner=cfg.model.use_combiner,
     )  # about retur
-    print(model)
+    # print(model)
 
     checkpoint = torch.load(cfg.model.pretrained, map_location=torch.device('cpu'))
     model.load_state_dict(checkpoint['model'])
