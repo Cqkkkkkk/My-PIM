@@ -59,7 +59,7 @@ def build_resnet50(pretrained: str = "./resnet50_miil_21k.pth",
                    num_classes: int = 200,
                    use_combiner: bool = True,
                    comb_proj_size: Union[int, None] = None,
-                   positive_adj: bool = False):
+                   ):
 
     
 
@@ -99,7 +99,7 @@ def build_resnet50(pretrained: str = "./resnet50_miil_21k.pth",
                         num_selects=num_selects,
                         use_combiner=num_selects,
                         comb_proj_size=comb_proj_size,
-                        positive_adj=positive_adj
+                        
                         )
 
 
@@ -115,7 +115,7 @@ def build_efficientnet(pretrained: bool = True,
                        num_classes: int = 200,
                        use_combiner: bool = True,
                        comb_proj_size: Union[int, None] = None,
-                       positive_adj: bool = False):
+                       ):
 
     import torchvision.models as models
 
@@ -153,7 +153,7 @@ def build_efficientnet(pretrained: bool = True,
                         num_selects=num_selects,
                         use_combiner=num_selects,
                         comb_proj_size=comb_proj_size,
-                        positive_adj=positive_adj)
+                        )
 
 
 def build_vit16(pretrained: str = "./vit_base_patch16_224_miil_21k.pth",
@@ -168,7 +168,7 @@ def build_vit16(pretrained: str = "./vit_base_patch16_224_miil_21k.pth",
                 num_classes: int = 200,
                 use_combiner: bool = True,
                 comb_proj_size: Union[int, None] = None,
-                positive_adj: bool = False):
+                ):
 
 
     backbone = timm.create_model(
@@ -227,7 +227,7 @@ def build_vit16(pretrained: str = "./vit_base_patch16_224_miil_21k.pth",
                         num_selects=num_selects,
                         use_combiner=num_selects,
                         comb_proj_size=comb_proj_size,
-                        positive_adj=positive_adj)
+                        )
 
 
 def build_swintransformer(pretrained: bool = True,
@@ -241,7 +241,7 @@ def build_swintransformer(pretrained: bool = True,
                           num_classes: int = 200,
                           use_combiner: bool = True,
                           comb_proj_size: Union[int, None] = None,
-                          positive_adj: bool = False):
+                          ):
     """
     This function is to building swin transformer. timm swin-transformer + torch.fx.proxy.Proxy 
     could cause error, so we set return_nodes to None and change swin-transformer model script to
@@ -278,7 +278,7 @@ def build_swintransformer(pretrained: bool = True,
                         num_selects=num_selects,
                         use_combiner=num_selects,
                         comb_proj_size=comb_proj_size,
-                        positive_adj=positive_adj)
+                        )
 
 
 MODEL_GETTER = {

@@ -5,7 +5,7 @@ from torchvision.models.feature_extraction import create_feature_extractor
 from typing import Union
 import pdb
 
-from models.combiner import GCNCombiner
+from models.combiner import Combiner
 from models.selector import WeaklySelector
 from models.fpn import FPN
 
@@ -58,7 +58,6 @@ class PluginMoodel(nn.Module):
                  num_selects: dict,
                  use_combiner: bool,
                  comb_proj_size: Union[int, None],
-                 positive_adj : bool
                  ):
        
         super(PluginMoodel, self).__init__()
@@ -115,8 +114,7 @@ class PluginMoodel(nn.Module):
                 gcn_inputs, gcn_proj_size = outs, comb_proj_size  # redundant, fix in future
             total_num_selects = sum([num_selects[name]
                                     for name in num_selects])  # sum
-            self.combiner = GCNCombiner(
-                total_num_selects, num_classes, gcn_inputs, gcn_proj_size, self.fpn_size, positive_adj)
+            self.combiner = Combiner(total_num_selects, num_classes, gcn_inputs, gcn_proj_size, self.fpn_size)
 
     def build_fpn_classifier(self, inputs: dict, fpn_size: int, num_classes: int):
         """

@@ -1,6 +1,6 @@
 project:
   name: CUB200
-  exp_name: Positive-Adj-Exp
+  exp_name: NewConvForm
 
 wandb:
   use: True
@@ -30,7 +30,8 @@ model:
   lambda_n: 5.0
   lambda_c: 1.0
 
-  positive_adj: exp
+  positive_adj: False
+  combiner: 'new'
 
 optim:
   optimizer: SGD

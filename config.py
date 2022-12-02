@@ -53,6 +53,8 @@ def set_cfg(cfg):
     cfg.model.lambda_n = 5.0
     cfg.model.lambda_c = 1.0
 
+    cfg.model.combiner =  'original' # Assert in  ['original', 'new']
+
     cfg.model.positive_adj = None # Assert in [None, 'exp', 'abs']
 
     # ------------------------------------------------------------------------ #

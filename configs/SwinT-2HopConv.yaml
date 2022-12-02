@@ -1,9 +1,9 @@
 project:
   name: CUB200
-  exp_name: Base
+  exp_name: NewConvForm
 
 wandb:
-  use: False
+  use: True
   entity: Chenqin
 
 datasets:
@@ -24,10 +24,15 @@ model:
   num_selects_layer_names : ['layer1', 'layer2', 'layer3', 'layer4']
   num_selects: [2048, 512, 128, 32] 
   use_combiner: True
+  positive_adj: 
   lambda_b: 0.5
   lambda_s: 0.0
   lambda_n: 5.0
   lambda_c: 1.0
+
+  positive_adj: False
+  combiner: 'new-2hop'
+
 optim:
   optimizer: SGD
   max_lr: 0.0005
