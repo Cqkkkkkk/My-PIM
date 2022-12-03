@@ -1,6 +1,6 @@
 project:
   name: CUB200
-  exp_name: NewConvForm
+  exp_name: 2HopConv
 
 wandb:
   use: True
