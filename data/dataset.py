@@ -4,6 +4,7 @@ import torch
 import torchvision.transforms as transforms
 from PIL import Image
 from config import cfg
+from torch.utils.data import DataLoader
 
 
 def build_loader():
@@ -14,7 +15,7 @@ def build_loader():
                                 root=cfg.datasets.train_root,
                                 data_size=cfg.datasets.data_size,
                                 return_index=True)
-    train_loader = torch.utils.data.DataLoader(train_set,
+    train_loader = DataLoader(train_set,
                                                 num_workers=cfg.datasets.num_workers,
                                                 shuffle=True,
                                                 batch_size=cfg.datasets.batch_size)
@@ -24,7 +25,7 @@ def build_loader():
                             root=cfg.datasets.val_root,
                             data_size=cfg.datasets.data_size,
                             return_index=True)
-    val_loader = torch.utils.data.DataLoader(val_set,
+    val_loader = DataLoader(val_set,
                                                 num_workers=1,
                                                 shuffle=True,
                                                 batch_size=cfg.datasets.batch_size)
