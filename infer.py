@@ -1,10 +1,10 @@
 import torch
 import warnings
-
-from models.builder import MODEL_GETTER
+import timm
 from data.dataset import build_loader
 from utils.logger import timeLogger
 from utils.record import build_record_folder
+from models.pim_module import PluginMoodel
 from eval import eval_and_cm
 
 from cmd_args import parse_args
@@ -30,16 +30,19 @@ def set_environment(tlogger):
 
     ### = = = =  Model = = = =
     tlogger.print("Building Model....")
-    model = MODEL_GETTER[cfg.model.name](
-        use_fpn=cfg.model.use_fpn,
-        fpn_size=cfg.model.fpn_size,
-        use_selection=cfg.model.use_selection,
-        num_classes=cfg.datasets.num_classes,
-        num_selects=dict(
-            zip(cfg.model.num_selects_layer_names, cfg.model.num_selects)),
-        use_combiner=cfg.model.use_combiner,
-    )  # about retur
-    # print(model)
+
+    backbone = timm.create_model('swin_large_patch4_window12_384_in22k', pretrained=True)
+    model = PluginMoodel(backbone=backbone,
+                        return_nodes=None,
+                        img_size=cfg.datasets.data_size,
+                        use_fpn=cfg.model.use_fpn,
+                        fpn_size=cfg.model.fpn_size,
+                        proj_type='Linear',
+                        upsample_type='Conv',
+                        use_selection=cfg.model.use_selection,
+                        num_classes=cfg.datasets.num_classes,
+                        num_selects=dict(zip(cfg.model.num_selects_layer_names, cfg.model.num_selects)),
+                        use_combiner=cfg.model.use_combiner)
 
     checkpoint = torch.load(cfg.model.pretrained, map_location=torch.device('cpu'))
     model.load_state_dict(checkpoint['model'])

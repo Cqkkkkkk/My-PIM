@@ -17,7 +17,6 @@ datasets:
 model:
   name: swin-t
   pretrained: records/CUB200/Positive-Adj-Abs/backup/best.pt
-  use_amp: True
   use_fpn: True
   fpn_size: 1536
   use_selection: True

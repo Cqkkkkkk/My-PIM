@@ -56,8 +56,7 @@ class PluginMoodel(nn.Module):
                  use_selection: bool,
                  num_classes: int,
                  num_selects: dict,
-                 use_combiner: bool,
-                 comb_proj_size: Union[int, None],
+                 use_combiner: bool
                  ):
        
         super(PluginMoodel, self).__init__()
@@ -111,7 +110,8 @@ class PluginMoodel(nn.Module):
             if self.use_fpn:
                 gcn_inputs, gcn_proj_size = None, None
             else:
-                gcn_inputs, gcn_proj_size = outs, comb_proj_size  # redundant, fix in future
+                gcn_inputs, gcn_proj_size = outs, None  
+                
             total_num_selects = sum([num_selects[name]
                                     for name in num_selects])  # sum
             self.combiner = Combiner(total_num_selects, num_classes, gcn_inputs, gcn_proj_size, self.fpn_size)

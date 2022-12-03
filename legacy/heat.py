@@ -10,7 +10,7 @@ import argparse
 import warnings
 
 from utils.record import load_yaml
-from models.builder import MODEL_GETTER
+from legacy.builder import MODEL_GETTER
 from utils.costom_logger import timeLogger
 
 warnings.simplefilter("ignore")

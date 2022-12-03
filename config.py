@@ -40,7 +40,6 @@ def set_cfg(cfg):
     cfg.model = CN()
     cfg.model.name = 'swin-t'
     cfg.model.pretrained = None
-    cfg.model.use_amp = True
     cfg.model.use_fpn = True
     cfg.model.fpn_size = 1536
     cfg.model.use_selection = True

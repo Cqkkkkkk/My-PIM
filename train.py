@@ -62,18 +62,14 @@ def train_epoch(epoch, model, scaler, amp_context, optimizer, scheduler, train_l
             loss /= cfg.train.update_freq
 
         """ = = = = calculate gradient = = = = """
-        if cfg.model.use_amp:
-            scaler.scale(loss).backward()
-        else:
-            loss.backward()
+
+        scaler.scale(loss).backward()
+        
 
         """ = = = = update model = = = = """
         if (batch_id + 1) % cfg.train.update_freq == 0:
-            if cfg.model.use_amp:
-                scaler.step(optimizer)
-                scaler.update()  # next batch
-            else:
-                optimizer.step()
+            scaler.step(optimizer)
+            scaler.update()  # next batch
             optimizer.zero_grad()
 
         """ log (MISC) """

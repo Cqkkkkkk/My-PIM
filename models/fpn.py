@@ -73,17 +73,10 @@ class FPN(nn.Module):
         return x1 + x0
 
     def forward(self, x):
-        """
-        x : dictionary
-            {
-                "node_name1": feature1,
-                "node_name2": feature2, ...
-            }
-        """
         # project to same dimension
         hs = []
         for i, name in enumerate(x):
-            x[name] = getattr(self, "Proj_"+name)(x[name])
+            x[name] = getattr(self, "Proj_" + name)(x[name])
             hs.append(name)
 
         for i in range(len(hs)-1, 0, -1):

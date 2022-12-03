@@ -1,9 +1,10 @@
 import torch
+import timm
 import contextlib
 import wandb
 import warnings
 
-from models.builder import MODEL_GETTER
+
 from data.dataset import build_loader
 from utils.logger import timeLogger
 from utils.record import build_record_folder
@@ -12,7 +13,8 @@ from eval import evaluate, eval_and_save
 from train import train_epoch
 from cmd_args import parse_args
 from config import cfg
-
+from models.pim_module import PluginMoodel
+        
 
 import pdb
 
@@ -48,15 +50,26 @@ def set_environment(tlogger):
     # ------------------------------------------------------------------------ #
 
     tlogger.print("Building Model....")
-    model = MODEL_GETTER[cfg.model.name](
-        use_fpn=cfg.model.use_fpn,
-        fpn_size=cfg.model.fpn_size,
-        use_selection=cfg.model.use_selection,
-        num_classes=cfg.datasets.num_classes,
-        num_selects=dict(
-            zip(cfg.model.num_selects_layer_names, cfg.model.num_selects)),
-        use_combiner=cfg.model.use_combiner,
-    )
+
+    if cfg.model.name == 'swin-t':
+        
+
+        backbone = timm.create_model('swin_large_patch4_window12_384_in22k', pretrained=True)
+        
+
+
+        model = PluginMoodel(backbone=backbone,
+                        return_nodes=None,
+                        img_size=cfg.datasets.data_size,
+                        use_fpn=cfg.model.use_fpn,
+                        fpn_size=cfg.model.fpn_size,
+                        proj_type='Linear',
+                        upsample_type='Conv',
+                        use_selection=cfg.model.use_selection,
+                        num_classes=cfg.datasets.num_classes,
+                        num_selects=dict(zip(cfg.model.num_selects_layer_names, cfg.model.num_selects)),
+                        use_combiner=cfg.model.use_combiner)
+
 
     if cfg.model.pretrained is not None:
         ckpt = torch.load(cfg.model.pretrained, map_location=torch.device('cpu'))
@@ -93,12 +106,9 @@ def set_environment(tlogger):
 
     scheduler = CosineDecayLRScheduler(len(train_loader))
 
-    if cfg.model.use_amp:
-        scaler = torch.cuda.amp.GradScaler()
-        amp_context = torch.cuda.amp.autocast
-    else:
-        scaler = None
-        amp_context = contextlib.nullcontext
+    scaler = torch.cuda.amp.GradScaler()
+    amp_context = torch.cuda.amp.autocast
+   
 
     return train_loader, val_loader, model, optimizer, scheduler, scaler, amp_context, start_epoch
 
