@@ -9,26 +9,25 @@ from config import cfg
 def build_loader():
     train_set, train_loader = None, None
 
-    if cfg.datasets.train_root is not None:
-        train_set = ImageDataset(istrain=True,
-                                 root=cfg.datasets.train_root,
-                                 data_size=cfg.datasets.data_size,
-                                 return_index=True)
-        train_loader = torch.utils.data.DataLoader(train_set,
-                                                   num_workers=cfg.datasets.num_workers,
-                                                   shuffle=True,
-                                                   batch_size=cfg.datasets.batch_size)
 
-    val_set, val_loader = None, None
-    if cfg.datasets.val_root is not None:
-        val_set = ImageDataset(istrain=False,
-                               root=cfg.datasets.val_root,
-                               data_size=cfg.datasets.data_size,
-                               return_index=True)
-        val_loader = torch.utils.data.DataLoader(val_set,
-                                                 num_workers=1,
-                                                 shuffle=True,
-                                                 batch_size=cfg.datasets.batch_size)
+    train_set = ImageDataset(istrain=True,
+                                root=cfg.datasets.train_root,
+                                data_size=cfg.datasets.data_size,
+                                return_index=True)
+    train_loader = torch.utils.data.DataLoader(train_set,
+                                                num_workers=cfg.datasets.num_workers,
+                                                shuffle=True,
+                                                batch_size=cfg.datasets.batch_size)
+
+  
+    val_set = ImageDataset(istrain=False,
+                            root=cfg.datasets.val_root,
+                            data_size=cfg.datasets.data_size,
+                            return_index=True)
+    val_loader = torch.utils.data.DataLoader(val_set,
+                                                num_workers=1,
+                                                shuffle=True,
+                                                batch_size=cfg.datasets.batch_size)
 
     return train_loader, val_loader
 

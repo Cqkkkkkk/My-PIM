@@ -14,7 +14,7 @@ from train import train_epoch
 from cmd_args import parse_args
 from config import cfg
 from models.pim_module import PluginMoodel
-        
+
 
 import pdb
 
@@ -32,16 +32,6 @@ def set_environment(tlogger):
 
     tlogger.print("Building Dataloader....")
     train_loader, val_loader = build_loader()
-    if train_loader is None and val_loader is None:
-        raise ValueError("Find nothing to train or evaluate.")
-    if train_loader is not None:
-        print("Train Samples: {} (batch: {})".format(len(train_loader.dataset), len(train_loader)))
-    else:
-        print("Train Samples: 0 ----> [Only Evaluation]")
-    if val_loader is not None:
-        print("Validation Samples: {} (batch: {})".format(len(val_loader.dataset), len(val_loader)))
-    else:
-        print("Validation Samples: 0 ----> [Only Training]")
 
     tlogger.print()
 
@@ -52,38 +42,31 @@ def set_environment(tlogger):
     tlogger.print("Building Model....")
 
     if cfg.model.name == 'swin-t':
-        
 
         backbone = timm.create_model('swin_large_patch4_window12_384_in22k', pretrained=True)
-        
-
 
         model = PluginMoodel(backbone=backbone,
-                        return_nodes=None,
-                        img_size=cfg.datasets.data_size,
-                        use_fpn=cfg.model.use_fpn,
-                        fpn_size=cfg.model.fpn_size,
-                        proj_type='Linear',
-                        upsample_type='Conv',
-                        use_selection=cfg.model.use_selection,
-                        num_classes=cfg.datasets.num_classes,
-                        num_selects=dict(zip(cfg.model.num_selects_layer_names, cfg.model.num_selects)),
-                        use_combiner=cfg.model.use_combiner)
+                             return_nodes=None,
+                             img_size=cfg.datasets.data_size,
+                             use_fpn=cfg.model.use_fpn,
+                             fpn_size=cfg.model.fpn_size,
+                             proj_type='Linear',
+                             upsample_type='Conv',
+                             use_selection=cfg.model.use_selection,
+                             num_classes=cfg.datasets.num_classes,
+                             num_selects=dict(zip(cfg.model.num_selects_layer_names, cfg.model.num_selects)),
+                             use_combiner=cfg.model.use_combiner)
 
-
+    start_epoch = 0
     if cfg.model.pretrained is not None:
         ckpt = torch.load(cfg.model.pretrained, map_location=torch.device('cpu'))
         model.load_state_dict(ckpt['model'])
         start_epoch = ckpt['epoch']
-    else:
-        start_epoch = 0
+        
 
     model.to(cfg.train.device)
     tlogger.print()
 
-    # No Optimizer is specified during evaluation
-    if train_loader is None:
-        return train_loader, val_loader, model, None, None, None, None
 
     # ------------------------------------------------------------------------ #
     # Optimizer
@@ -108,7 +91,6 @@ def set_environment(tlogger):
 
     scaler = torch.cuda.amp.GradScaler()
     amp_context = torch.cuda.amp.autocast
-   
 
     return train_loader, val_loader, model, optimizer, scheduler, scaler, amp_context, start_epoch
 
@@ -150,7 +132,7 @@ def main(tlogger):
             "optimizer": optimizer.state_dict(),
             "epoch": epoch
         }
-        torch.save(checkpoint, cfg.train.save_dir + "backup/last.pt")
+        # torch.save(checkpoint, cfg.train.save_dir + "backup/last.pt")
 
         # Evaluation
         if epoch == 0 or (epoch + 1) % cfg.train.eval_freq == 0:
