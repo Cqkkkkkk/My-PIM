@@ -49,10 +49,8 @@ class PluginMoodel(nn.Module):
                  fpn_size: Union[int, None],
                  proj_type: str,
                  upsample_type: str,
-                 use_selection: bool,
                  num_classes: int,
                  num_selects: dict,
-                 use_combiner: bool
                  ):
        
         super(PluginMoodel, self).__init__()
@@ -90,24 +88,17 @@ class PluginMoodel(nn.Module):
         self.fpn_size = fpn_size
 
         # = = = = = Selector = = = = =
-        self.use_selection = use_selection
-        if self.use_selection:
-            # if not using fpn, build classifier in weakly selector
-            w_fpn_size = self.fpn_size
-            self.selector = WeaklySelector(
-                outs, num_classes, num_selects, w_fpn_size)
+
+        # if not using fpn, build classifier in weakly selector
+        w_fpn_size = self.fpn_size
+        self.selector = WeaklySelector(outs, num_classes, num_selects, w_fpn_size)
 
         # = = = = = Combiner = = = = =
 
-        self.use_combiner = use_combiner
-        if self.use_combiner:
-            assert self.use_selection, "Please use selection module before combiner"
+        gcn_inputs, gcn_proj_size = None, None
             
-            gcn_inputs, gcn_proj_size = None, None
-                
-            total_num_selects = sum([num_selects[name]
-                                    for name in num_selects])  # sum
-            self.combiner = Combiner(total_num_selects, num_classes, gcn_inputs, gcn_proj_size, self.fpn_size)
+        total_num_selects = sum([num_selects[name] for name in num_selects])
+        self.combiner = Combiner(total_num_selects, num_classes, gcn_inputs, gcn_proj_size, self.fpn_size)
 
     def build_fpn_classifier(self, inputs: dict, fpn_size: int, num_classes: int):
         """
@@ -138,39 +129,30 @@ class PluginMoodel(nn.Module):
             elif len(x[name].size()) == 3:
                 logit = x[name].transpose(1, 2).contiguous()
             logits[name] = getattr(self, "fpn_classifier_"+name)(logit)
-            logits[name] = logits[name].transpose(
-                1, 2).contiguous()  # transpose
+            logits[name] = logits[name].transpose(1, 2).contiguous()
 
     def forward(self, x: torch.Tensor):
 
         logits = {}
-
         x = self.forward_backbone(x)
-
         x = self.fpn(x)
         self.fpn_predict(x, logits)
 
-        if self.use_selection:
-            selects = self.selector(x, logits)
-
-        if self.use_combiner:
-            comb_outs = self.combiner(selects)
-            logits['comb_outs'] = comb_outs
-            return logits
-
-        if self.use_selection or self.fpn:
-            return logits
+        selects = self.selector(x, logits)
+        comb_outs = self.combiner(selects)
+        logits['comb_outs'] = comb_outs
+        return logits
 
         # original backbone (only predict final selected layer)
-        for name in x:
-            hs = x[name]
+        # for name in x:
+        #     hs = x[name]
 
-        if len(hs.size()) == 4:
-            hs = F.adaptive_avg_pool2d(hs, (1, 1))
-            hs = hs.flatten(1)
-        else:
-            hs = hs.mean(1)
-        out = self.classifier(hs)
-        logits['ori_out'] = logits
+        # if len(hs.size()) == 4:
+        #     hs = F.adaptive_avg_pool2d(hs, (1, 1))
+        #     hs = hs.flatten(1)
+        # else:
+        #     hs = hs.mean(1)
+        # out = self.classifier(hs)
+        # logits['ori_out'] = logits
 
-        return logits
+        # return logits

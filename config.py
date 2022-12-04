@@ -41,11 +41,9 @@ def set_cfg(cfg):
     cfg.model.name = 'swin-t'
     cfg.model.pretrained = None
     cfg.model.fpn_size = 1536
-    cfg.model.use_selection = True
     # For layer 1, 2, 3, 4
     cfg.model.num_selects_layer_names = ['layer1', 'layer2', 'layer3', 'layer4']
     cfg.model.num_selects = [2048, 512, 128, 32] 
-    cfg.model.use_combiner = True
     cfg.model.lambda_b = 0.5
     cfg.model.lambda_s = 0.0
     cfg.model.lambda_n = 5.0

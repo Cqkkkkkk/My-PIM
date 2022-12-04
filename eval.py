@@ -26,42 +26,42 @@ def cal_train_metrics(msg: dict, outs: dict, labels: torch.Tensor, batch_size: i
         msg["train_loss/layer{}_loss".format(i)] = loss.item()
         total_loss += loss.item()
 
-    if cfg.model.use_selection:
-        for name in outs:
-            if "select_" not in name:
-                continue
-            B, S, _ = outs[name].size()
-            logit = outs[name].view(-1, cfg.datasets.num_classes)
-            labels_0 = labels.unsqueeze(1).repeat(1, S).flatten(0)
-            acc = top_k_corrects(logit, labels_0, tops=[1])["top-1"] / (B*S)
-            acc = round(acc * 100, 2)
-            msg["train_acc/{}_acc".format(name)] = acc
-            labels_0 = torch.zeros([B * S, cfg.datasets.num_classes]) - 1
-            labels_0 = labels_0.to(cfg.train.device)
-            loss = F.mse_loss(F.tanh(logit), labels_0)
-            msg["train_loss/{}_loss".format(name)] = loss.item()
-            total_loss += loss.item()
-
-        for name in outs:
-            if "drop_" not in name:
-                continue
-            B, S, _ = outs[name].size()
-            logit = outs[name].view(-1, cfg.datasets.num_classes)
-            labels_1 = labels.unsqueeze(1).repeat(1, S).flatten(0)
-            acc = top_k_corrects(logit, labels_1, tops=[1])["top-1"] / (B*S)
-            acc = round(acc * 100, 2)
-            msg["train_acc/{}_acc".format(name)] = acc
-            loss = F.cross_entropy(logit, labels_1)
-            msg["train_loss/{}_loss".format(name)] = loss.item()
-            total_loss += loss.item()
-
-    if cfg.model.use_combiner:
-        acc = top_k_corrects(outs['comb_outs'], labels, tops=[1])["top-1"] / batch_size
+    
+    for name in outs:
+        if "select_" not in name:
+            continue
+        B, S, _ = outs[name].size()
+        logit = outs[name].view(-1, cfg.datasets.num_classes)
+        labels_0 = labels.unsqueeze(1).repeat(1, S).flatten(0)
+        acc = top_k_corrects(logit, labels_0, tops=[1])["top-1"] / (B*S)
         acc = round(acc * 100, 2)
-        msg["train_acc/combiner_acc"] = acc
-        loss = F.cross_entropy(outs['comb_outs'], labels)
-        msg["train_loss/combiner_loss"] = loss.item()
+        msg["train_acc/{}_acc".format(name)] = acc
+        labels_0 = torch.zeros([B * S, cfg.datasets.num_classes]) - 1
+        labels_0 = labels_0.to(cfg.train.device)
+        loss = F.mse_loss(F.tanh(logit), labels_0)
+        msg["train_loss/{}_loss".format(name)] = loss.item()
         total_loss += loss.item()
+
+    for name in outs:
+        if "drop_" not in name:
+            continue
+        B, S, _ = outs[name].size()
+        logit = outs[name].view(-1, cfg.datasets.num_classes)
+        labels_1 = labels.unsqueeze(1).repeat(1, S).flatten(0)
+        acc = top_k_corrects(logit, labels_1, tops=[1])["top-1"] / (B*S)
+        acc = round(acc * 100, 2)
+        msg["train_acc/{}_acc".format(name)] = acc
+        loss = F.cross_entropy(logit, labels_1)
+        msg["train_loss/{}_loss".format(name)] = loss.item()
+        total_loss += loss.item()
+
+    # Combiner
+    acc = top_k_corrects(outs['comb_outs'], labels, tops=[1])["top-1"] / batch_size
+    acc = round(acc * 100, 2)
+    msg["train_acc/combiner_acc"] = acc
+    loss = F.cross_entropy(outs['comb_outs'], labels)
+    msg["train_loss/combiner_loss"] = loss.item()
+    total_loss += loss.item()
 
     if "ori_out" in outs:
         acc = top_k_corrects(outs["ori_out"], labels, tops=[1])["top-1"] / batch_size
@@ -193,29 +193,28 @@ def evaluate(model, test_loader):
                 this_name = "layer" + str(i)
                 _cal_evalute_metric(corrects, total_samples, outs[this_name].mean(1), labels, this_name, scores, score_names)
         
-            ### for research
-            if cfg.model.use_selection:
-                for name in outs:
-                    if "select_" not in name:
-                        continue
-                    this_name = name
-                    S = outs[name].size(1)
-                    logit = outs[name].view(-1, cfg.datasets.num_classes)
-                    labels_1 = labels.unsqueeze(1).repeat(1, S).flatten(0)
-                    _cal_evalute_metric(corrects, total_samples, logit, labels_1, this_name)
-                
-                for name in outs:
-                    if "drop_" not in name:
-                        continue
-                    this_name = name
-                    S = outs[name].size(1)
-                    logit = outs[name].view(-1, cfg.datasets.num_classes)
-                    labels_0 = labels.unsqueeze(1).repeat(1, S).flatten(0)
-                    _cal_evalute_metric(corrects, total_samples, logit, labels_0, this_name)
+            ### Selects for research
+            for name in outs:
+                if "select_" not in name:
+                    continue
+                this_name = name
+                S = outs[name].size(1)
+                logit = outs[name].view(-1, cfg.datasets.num_classes)
+                labels_1 = labels.unsqueeze(1).repeat(1, S).flatten(0)
+                _cal_evalute_metric(corrects, total_samples, logit, labels_1, this_name)
+            
+            for name in outs:
+                if "drop_" not in name:
+                    continue
+                this_name = name
+                S = outs[name].size(1)
+                logit = outs[name].view(-1, cfg.datasets.num_classes)
+                labels_0 = labels.unsqueeze(1).repeat(1, S).flatten(0)
+                _cal_evalute_metric(corrects, total_samples, logit, labels_0, this_name)
 
-            if cfg.model.use_combiner:
-                this_name = "combiner"
-                _cal_evalute_metric(corrects, total_samples, outs["comb_outs"], labels, this_name, scores, score_names)
+            # Combiner
+            this_name = "combiner"
+            _cal_evalute_metric(corrects, total_samples, outs["comb_outs"], labels, this_name, scores, score_names)
 
             if "ori_out" in outs:
                 this_name = "original"
@@ -265,9 +264,9 @@ def evaluate_cm(model, test_loader):
             outs = model(datas)
 
 
-            if cfg.model.use_combiner:
-                this_name = "combiner"
-                _cal_evalute_metric(corrects, total_samples, outs["comb_outs"], labels, this_name, scores, score_names)
+           
+            this_name = "combiner"
+            _cal_evalute_metric(corrects, total_samples, outs["comb_outs"], labels, this_name, scores, score_names)
 
             # _average_top_k_result(corrects, total_samples, scores, labels)
 

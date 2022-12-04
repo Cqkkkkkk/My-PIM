@@ -44,10 +44,8 @@ class ModelTrainer:
                                 fpn_size=cfg.model.fpn_size,
                                 proj_type='Linear',
                                 upsample_type='Conv',
-                                use_selection=cfg.model.use_selection,
                                 num_classes=cfg.datasets.num_classes,
-                                num_selects=dict(zip(cfg.model.num_selects_layer_names, cfg.model.num_selects)),
-                                use_combiner=cfg.model.use_combiner).to(cfg.train.device)
+                                num_selects=dict(zip(cfg.model.num_selects_layer_names, cfg.model.num_selects))).to(cfg.train.device)
         self.start_epoch = 0
         if cfg.model.pretrained is not None:
             ckpt = torch.load(cfg.model.pretrained, map_location=torch.device('cpu'))

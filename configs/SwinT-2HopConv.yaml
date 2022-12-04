@@ -18,10 +18,8 @@ model:
   name: swin-t
   pretrained: ~
   fpn_size: 1536
-  use_selection: True
   num_selects_layer_names : ['layer1', 'layer2', 'layer3', 'layer4']
   num_selects: [2048, 512, 128, 32] 
-  use_combiner: True
   positive_adj: 
   lambda_b: 0.5
   lambda_s: 0.0

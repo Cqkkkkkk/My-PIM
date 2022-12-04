@@ -38,10 +38,8 @@ def set_environment(tlogger):
                         fpn_size=cfg.model.fpn_size,
                         proj_type='Linear',
                         upsample_type='Conv',
-                        use_selection=cfg.model.use_selection,
                         num_classes=cfg.datasets.num_classes,
-                        num_selects=dict(zip(cfg.model.num_selects_layer_names, cfg.model.num_selects)),
-                        use_combiner=cfg.model.use_combiner)
+                        num_selects=dict(zip(cfg.model.num_selects_layer_names, cfg.model.num_selects)))
 
     checkpoint = torch.load(cfg.model.pretrained, map_location=torch.device('cpu'))
     model.load_state_dict(checkpoint['model'])
