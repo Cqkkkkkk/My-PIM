@@ -18,59 +18,61 @@ def cal_train_metrics(msg: dict, outs: dict, labels: torch.Tensor, batch_size: i
 
     total_loss = 0.0
 
-   
-    for i in range(1, 5):
-        acc = top_k_corrects(outs["layer"+str(i)].mean(1), labels, tops=[1])["top-1"] / batch_size
-        acc = round(acc * 100, 2)
-        msg["train_acc/layer{}_acc".format(i)] = acc
-        loss = F.cross_entropy(outs["layer"+str(i)].mean(1), labels)
-        msg["train_loss/layer{}_loss".format(i)] = loss.item()
-        total_loss += loss.item()
+    if not cfg.model.single:
 
-    
-    for name in outs:
-        if "select_" not in name:
-            continue
-        B, S, _ = outs[name].size()
-        logit = outs[name].view(-1, cfg.datasets.num_classes)
-        labels_0 = labels.unsqueeze(1).repeat(1, S).flatten(0)
-        acc = top_k_corrects(logit, labels_0, tops=[1])["top-1"] / (B*S)
-        acc = round(acc * 100, 2)
-        msg["train_acc/{}_acc".format(name)] = acc
-        labels_0 = torch.zeros([B * S, cfg.datasets.num_classes]) - 1
-        labels_0 = labels_0.to(cfg.train.device)
-        loss = F.mse_loss(F.tanh(logit), labels_0)
-        msg["train_loss/{}_loss".format(name)] = loss.item()
-        total_loss += loss.item()
+        for i in range(1, 5):
+            acc = top_k_corrects(outs["layer"+str(i)].mean(1), labels, tops=[1])["top-1"] / batch_size
+            acc = round(acc * 100, 2)
+            msg["train_acc/layer{}_acc".format(i)] = acc
+            loss = F.cross_entropy(outs["layer"+str(i)].mean(1), labels)
+            msg["train_loss/layer{}_loss".format(i)] = loss.item()
+            total_loss += loss.item()
 
-    for name in outs:
-        if "drop_" not in name:
-            continue
-        B, S, _ = outs[name].size()
-        logit = outs[name].view(-1, cfg.datasets.num_classes)
-        labels_1 = labels.unsqueeze(1).repeat(1, S).flatten(0)
-        acc = top_k_corrects(logit, labels_1, tops=[1])["top-1"] / (B*S)
-        acc = round(acc * 100, 2)
-        msg["train_acc/{}_acc".format(name)] = acc
-        loss = F.cross_entropy(logit, labels_1)
-        msg["train_loss/{}_loss".format(name)] = loss.item()
-        total_loss += loss.item()
+        
+        for name in outs:
+            if "select_" not in name:
+                continue
+            B, S, _ = outs[name].size()
+            logit = outs[name].view(-1, cfg.datasets.num_classes)
+            labels_0 = labels.unsqueeze(1).repeat(1, S).flatten(0)
+            acc = top_k_corrects(logit, labels_0, tops=[1])["top-1"] / (B*S)
+            acc = round(acc * 100, 2)
+            msg["train_acc/{}_acc".format(name)] = acc
+            labels_0 = torch.zeros([B * S, cfg.datasets.num_classes]) - 1
+            labels_0 = labels_0.to(cfg.train.device)
+            loss = F.mse_loss(F.tanh(logit), labels_0)
+            msg["train_loss/{}_loss".format(name)] = loss.item()
+            total_loss += loss.item()
 
-    # Combiner
-    acc = top_k_corrects(outs['comb_outs'], labels, tops=[1])["top-1"] / batch_size
-    acc = round(acc * 100, 2)
-    msg["train_acc/combiner_acc"] = acc
-    loss = F.cross_entropy(outs['comb_outs'], labels)
-    msg["train_loss/combiner_loss"] = loss.item()
-    total_loss += loss.item()
+        for name in outs:
+            if "drop_" not in name:
+                continue
+            B, S, _ = outs[name].size()
+            logit = outs[name].view(-1, cfg.datasets.num_classes)
+            labels_1 = labels.unsqueeze(1).repeat(1, S).flatten(0)
+            acc = top_k_corrects(logit, labels_1, tops=[1])["top-1"] / (B*S)
+            acc = round(acc * 100, 2)
+            msg["train_acc/{}_acc".format(name)] = acc
+            loss = F.cross_entropy(logit, labels_1)
+            msg["train_loss/{}_loss".format(name)] = loss.item()
+            total_loss += loss.item()
 
-    if "ori_out" in outs:
-        acc = top_k_corrects(outs["ori_out"], labels, tops=[1])["top-1"] / batch_size
+        # Combiner
+        acc = top_k_corrects(outs['comb_outs'], labels, tops=[1])["top-1"] / batch_size
         acc = round(acc * 100, 2)
-        msg["train_acc/ori_acc"] = acc
-        loss = F.cross_entropy(outs["ori_out"], labels)
-        msg["train_loss/ori_loss"] = loss.item()
+        msg["train_acc/combiner_acc"] = acc
+        loss = F.cross_entropy(outs['comb_outs'], labels)
+        msg["train_loss/combiner_loss"] = loss.item()
         total_loss += loss.item()
+        
+    else: 
+        if "ori_out" in outs:
+            acc = top_k_corrects(outs["ori_out"], labels, tops=[1])["top-1"] / batch_size
+            acc = round(acc * 100, 2)
+            msg["train_acc/ori_acc"] = acc
+            loss = F.cross_entropy(outs["ori_out"], labels)
+            msg["train_loss/ori_loss"] = loss.item()
+            total_loss += loss.item()
 
     msg["train_loss/total_loss"] = total_loss
 
@@ -216,6 +218,8 @@ def evaluate(model, test_loader):
                 # Combiner
                 this_name = "combiner"
                 _cal_evalute_metric(corrects, total_samples, outs["comb_outs"], labels, this_name, scores, score_names)
+
+
                 _average_top_k_result(corrects, total_samples, scores, labels)
                 
             else:

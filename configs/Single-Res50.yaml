@@ -3,7 +3,7 @@ project:
   exp_name: Single-Res50
 
 wandb:
-  use: False
+  use: True
   entity: Chenqin
 
 datasets:
