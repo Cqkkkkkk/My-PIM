@@ -35,7 +35,6 @@ def set_environment(tlogger):
     model = PluginMoodel(backbone=backbone,
                         return_nodes=None,
                         img_size=cfg.datasets.data_size,
-                        use_fpn=cfg.model.use_fpn,
                         fpn_size=cfg.model.fpn_size,
                         proj_type='Linear',
                         upsample_type='Conv',

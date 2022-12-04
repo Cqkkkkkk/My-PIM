@@ -8,7 +8,7 @@ from data.dataset import build_loader
 from utils.logger import timeLogger
 from utils.record import build_record_folder
 from utils.scheduler import CosineDecayLRScheduler, eval_freq_schedule
-from eval import evaluate, eval_and_save
+from eval import evaluate
 from train import train_epoch
 from cmd_args import parse_args
 from config import cfg
@@ -18,7 +18,6 @@ from models.pim_module import PluginMoodel
 import pdb
 
 warnings.simplefilter("ignore")
-
 
 
 class ModelTrainer:
@@ -42,7 +41,6 @@ class ModelTrainer:
             self.model = PluginMoodel(backbone=backbone,
                                 return_nodes=None,
                                 img_size=cfg.datasets.data_size,
-                                use_fpn=cfg.model.use_fpn,
                                 fpn_size=cfg.model.fpn_size,
                                 proj_type='Linear',
                                 upsample_type='Conv',
@@ -79,6 +77,7 @@ class ModelTrainer:
 
         self.scaler = torch.cuda.amp.GradScaler()
         self.amp_context = torch.cuda.amp.autocast
+
 
     def train_model(self):
         best_acc = 0.0
@@ -131,6 +130,7 @@ class ModelTrainer:
                     wandb.run.summary["best_acc"] = best_acc
                     wandb.run.summary["best_eval_name"] = best_eval_name
                     wandb.run.summary["best_epoch"] = epoch + 1
+
 
 if __name__ == "__main__":
 

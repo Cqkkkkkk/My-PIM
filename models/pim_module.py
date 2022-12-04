@@ -24,12 +24,9 @@ class PluginMoodel(nn.Module):
                 'layer4.2.relu_2': 'layer4',
             } # you can see the example on https://pytorch.org/vision/main/feature_extraction.html
             !!! if using 'Swin-Transformer', please set return_nodes to None
-            !!! and please set use_fpn to True
         * feat_sizes: 
             tuple or list contain features map size of each layers. 
             ((C, H, W)). e.g. ((1024, 14, 14), (2048, 7, 7))
-        * use_fpn: 
-            boolean, use features pyramid network or not
         * fpn_size: 
             integer, features pyramid network projection dimension
         * num_selects:
@@ -49,7 +46,6 @@ class PluginMoodel(nn.Module):
                  backbone: torch.nn.Module,
                  return_nodes: Union[dict, None],
                  img_size: int,
-                 use_fpn: bool,
                  fpn_size: Union[int, None],
                  proj_type: str,
                  upsample_type: str,
@@ -74,23 +70,22 @@ class PluginMoodel(nn.Module):
         outs = self.backbone(rand_in)
 
         # just original backbone
-        if not use_fpn and (not use_selection and not use_combiner):
-            for name in outs:
-                fs_size = outs[name].size()
-                if len(fs_size) == 3:
-                    out_size = fs_size.size(-1)
-                elif len(fs_size) == 4:
-                    out_size = fs_size.size(1)
-                else:
-                    raise ValueError(
-                        "The size of output dimension of previous must be 3 or 4.")
-            self.classifier = nn.Linear(out_size, num_classes)
+        # if not use_selection and not use_combiner:
+        #     for name in outs:
+        #         fs_size = outs[name].size()
+        #         if len(fs_size) == 3:
+        #             out_size = fs_size.size(-1)
+        #         elif len(fs_size) == 4:
+        #             out_size = fs_size.size(1)
+        #         else:
+        #             raise ValueError(
+        #                 "The size of output dimension of previous must be 3 or 4.")
+        #     self.classifier = nn.Linear(out_size, num_classes)
 
         # = = = = = FPN = = = = =
-        self.use_fpn = use_fpn
-        if self.use_fpn:
-            self.fpn = FPN(outs, fpn_size, proj_type, upsample_type)
-            self.build_fpn_classifier(outs, fpn_size, num_classes)
+
+        self.fpn = FPN(outs, fpn_size, proj_type, upsample_type)
+        self.build_fpn_classifier(outs, fpn_size, num_classes)
 
         self.fpn_size = fpn_size
 
@@ -98,7 +93,7 @@ class PluginMoodel(nn.Module):
         self.use_selection = use_selection
         if self.use_selection:
             # if not using fpn, build classifier in weakly selector
-            w_fpn_size = self.fpn_size if self.use_fpn else None
+            w_fpn_size = self.fpn_size
             self.selector = WeaklySelector(
                 outs, num_classes, num_selects, w_fpn_size)
 
@@ -107,10 +102,8 @@ class PluginMoodel(nn.Module):
         self.use_combiner = use_combiner
         if self.use_combiner:
             assert self.use_selection, "Please use selection module before combiner"
-            if self.use_fpn:
-                gcn_inputs, gcn_proj_size = None, None
-            else:
-                gcn_inputs, gcn_proj_size = outs, None  
+            
+            gcn_inputs, gcn_proj_size = None, None
                 
             total_num_selects = sum([num_selects[name]
                                     for name in num_selects])  # sum
@@ -154,9 +147,8 @@ class PluginMoodel(nn.Module):
 
         x = self.forward_backbone(x)
 
-        if self.use_fpn:
-            x = self.fpn(x)
-            self.fpn_predict(x, logits)
+        x = self.fpn(x)
+        self.fpn_predict(x, logits)
 
         if self.use_selection:
             selects = self.selector(x, logits)

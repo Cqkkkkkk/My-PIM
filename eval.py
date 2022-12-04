@@ -17,14 +17,14 @@ def cal_train_metrics(msg: dict, outs: dict, labels: torch.Tensor, batch_size: i
 
     total_loss = 0.0
 
-    if cfg.model.use_fpn:
-        for i in range(1, 5):
-            acc = top_k_corrects(outs["layer"+str(i)].mean(1), labels, tops=[1])["top-1"] / batch_size
-            acc = round(acc * 100, 2)
-            msg["train_acc/layer{}_acc".format(i)] = acc
-            loss = F.cross_entropy(outs["layer"+str(i)].mean(1), labels)
-            msg["train_loss/layer{}_loss".format(i)] = loss.item()
-            total_loss += loss.item()
+   
+    for i in range(1, 5):
+        acc = top_k_corrects(outs["layer"+str(i)].mean(1), labels, tops=[1])["top-1"] / batch_size
+        acc = round(acc * 100, 2)
+        msg["train_acc/layer{}_acc".format(i)] = acc
+        loss = F.cross_entropy(outs["layer"+str(i)].mean(1), labels)
+        msg["train_loss/layer{}_loss".format(i)] = loss.item()
+        total_loss += loss.item()
 
     if cfg.model.use_selection:
         for name in outs:
@@ -169,15 +169,6 @@ def _average_top_k_result(corrects: dict, total_samples: dict, scores: list, lab
 
 
 def evaluate(model, test_loader):
-    """
-    [Notice: Costom Model]
-    If you use costom model, please change fpn module return name (under 
-    if args.use_fpn: ...)
-    [Evaluation Metrics]
-    We calculate each layers accuracy, combiner accuracy and average-higest-1 ~ 
-    average-higest-5 accuracy (average-higest-5 means average all predict scores
-    as final predict)
-    """
 
     model.eval()
     corrects = {}
@@ -197,11 +188,11 @@ def evaluate(model, test_loader):
 
             outs = model(datas)
 
-            if cfg.model.use_fpn:
-                for i in range(1, 5):
-                    this_name = "layer" + str(i)
-                    _cal_evalute_metric(corrects, total_samples, outs[this_name].mean(1), labels, this_name, scores, score_names)
             
+            for i in range(1, 5):
+                this_name = "layer" + str(i)
+                _cal_evalute_metric(corrects, total_samples, outs[this_name].mean(1), labels, this_name, scores, score_names)
+        
             ### for research
             if cfg.model.use_selection:
                 for name in outs:
@@ -258,15 +249,6 @@ def evaluate(model, test_loader):
 
 
 def evaluate_cm(model, test_loader):
-    """
-    [Notice: Costom Model]
-    If you use costom model, please change fpn module return name (under
-    if args.use_fpn: ...)
-    [Evaluation Metrics]
-    We calculate each layers accuracy, combiner accuracy and average-higest-1 ~
-    average-higest-5 accuracy (average-higest-5 means average all predict scores
-    as final predict)
-    """
 
     model.eval()
     corrects = {}
@@ -282,9 +264,6 @@ def evaluate_cm(model, test_loader):
             datas = datas.to(cfg.train.device)
             outs = model(datas)
 
-            # if args.use_fpn and (0 < args.highest < 5):
-            #     this_name = "layer" + str(args.highest)
-            #     _cal_evalute_metric(corrects, total_samples, outs[this_name].mean(1), labels, this_name, scores, score_names)
 
             if cfg.model.use_combiner:
                 this_name = "combiner"
