@@ -18,12 +18,8 @@ class FPN(nn.Module):
             for Vit, "Fc". and Swin-T, "Conv"
         """
         super(FPN, self).__init__()
-        assert proj_type in ["Conv", "Linear"], \
-            "FPN projection type {} were not support yet, please choose type 'Conv' or 'Linear'".format(
-                proj_type)
-        assert upsample_type in ["Bilinear", "Conv"], \
-            "FPN upsample type {} were not support yet, please choose type 'Bilinear' or 'Conv'".format(
-                proj_type)
+        assert proj_type in ["Conv", "Linear"]
+        assert upsample_type in ["Bilinear", "Conv"]
 
         self.fpn_size = fpn_size
         self.upsample_type = upsample_type
@@ -82,7 +78,5 @@ class FPN(nn.Module):
         for i in range(len(hs)-1, 0, -1):
             x1_name = hs[i]
             x0_name = hs[i-1]
-            x[x0_name] = self.upsample_add(x[x0_name],
-                                           x[x1_name],
-                                           x1_name)
+            x[x0_name] = self.upsample_add(x[x0_name], x[x1_name], x1_name)
         return x

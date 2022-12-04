@@ -1,5 +1,5 @@
 # Base
-python main.py --cfg configs/SwinT-Base.yaml
+# python main.py --cfg configs/SwinT-Base.yaml
 
 # Positive adj: Abs
 # python main.py --cfg configs/SwinT-PositiveAdjAbs.yaml
@@ -12,3 +12,6 @@ python main.py --cfg configs/SwinT-Base.yaml
 
 # 2Hop Conv
 # python main.py --cfg configs/SwinT-2HopConv.yaml
+
+# Single-Res50
+python main.py --cfg configs/Single-Res50.yaml

@@ -45,7 +45,20 @@ class ModelTrainer:
                                 proj_type='Linear',
                                 upsample_type='Conv',
                                 num_classes=cfg.datasets.num_classes,
-                                num_selects=dict(zip(cfg.model.num_selects_layer_names, cfg.model.num_selects))).to(cfg.train.device)
+                                num_selects=dict(zip(cfg.model.num_selects_layer_names, cfg.model.num_selects))
+                            ).to(cfg.train.device)
+        if cfg.model.name == 'res50':
+            backbone = timm.create_model('resnet50', pretrained=True, num_classes=11221)
+            self.model = PluginMoodel(backbone=backbone,
+                                return_nodes=None,
+                                img_size=cfg.datasets.data_size,
+                                fpn_size=cfg.model.fpn_size,
+                                proj_type='Linear',
+                                upsample_type='Bilinear',
+                                num_classes=cfg.datasets.num_classes,
+                                num_selects=dict(zip(cfg.model.num_selects_layer_names, cfg.model.num_selects))
+                        ).to(cfg.train.device)
+
         self.start_epoch = 0
         if cfg.model.pretrained is not None:
             ckpt = torch.load(cfg.model.pretrained, map_location=torch.device('cpu'))

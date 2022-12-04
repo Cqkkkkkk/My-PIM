@@ -8,7 +8,7 @@ import pdb
 from models.combiner import Combiner
 from models.selector import WeaklySelector
 from models.fpn import FPN
-
+from config import cfg
 
 class PluginMoodel(nn.Module):
     """
@@ -68,37 +68,34 @@ class PluginMoodel(nn.Module):
         outs = self.backbone(rand_in)
 
         # just original backbone
-        # if not use_selection and not use_combiner:
-        #     for name in outs:
-        #         fs_size = outs[name].size()
-        #         if len(fs_size) == 3:
-        #             out_size = fs_size.size(-1)
-        #         elif len(fs_size) == 4:
-        #             out_size = fs_size.size(1)
-        #         else:
-        #             raise ValueError(
-        #                 "The size of output dimension of previous must be 3 or 4.")
-        #     self.classifier = nn.Linear(out_size, num_classes)
+        if cfg.model.single:
+            # for name in outs:
+            #     pdb.set_trace
+            #     fs_size = outs[name].size()
+            #     if len(fs_size) == 3:
+            #         out_size = fs_size.size(-1)
+            #     elif len(fs_size) == 4:
+            #         out_size = fs_size.size(1)
+            #     else:
+            #         raise ValueError("The size of output dimension of previous must be 3 or 4.")
+            out_size = outs.size(-1)
+            self.classifier = nn.Linear(out_size, num_classes)
 
-        # = = = = = FPN = = = = =
+        else:
+            # = = = = = FPN = = = = =
+            self.fpn = FPN(outs, fpn_size, proj_type, upsample_type)
+            self.build_fpn_classifier(outs, fpn_size, num_classes)
+            self.fpn_size = fpn_size
 
-        self.fpn = FPN(outs, fpn_size, proj_type, upsample_type)
-        self.build_fpn_classifier(outs, fpn_size, num_classes)
+            # = = = = = Selector = = = = =
+            # if not using fpn, build classifier in weakly selector
+            w_fpn_size = self.fpn_size
+            self.selector = WeaklySelector(outs, num_classes, num_selects, w_fpn_size)
 
-        self.fpn_size = fpn_size
-
-        # = = = = = Selector = = = = =
-
-        # if not using fpn, build classifier in weakly selector
-        w_fpn_size = self.fpn_size
-        self.selector = WeaklySelector(outs, num_classes, num_selects, w_fpn_size)
-
-        # = = = = = Combiner = = = = =
-
-        gcn_inputs, gcn_proj_size = None, None
-            
-        total_num_selects = sum([num_selects[name] for name in num_selects])
-        self.combiner = Combiner(total_num_selects, num_classes, gcn_inputs, gcn_proj_size, self.fpn_size)
+            # = = = = = Combiner = = = = =
+            gcn_inputs, gcn_proj_size = None, None
+            total_num_selects = sum([num_selects[name] for name in num_selects])
+            self.combiner = Combiner(total_num_selects, num_classes, gcn_inputs, gcn_proj_size, self.fpn_size)
 
     def build_fpn_classifier(self, inputs: dict, fpn_size: int, num_classes: int):
         """
@@ -131,28 +128,18 @@ class PluginMoodel(nn.Module):
             logits[name] = getattr(self, "fpn_classifier_"+name)(logit)
             logits[name] = logits[name].transpose(1, 2).contiguous()
 
-    def forward(self, x: torch.Tensor):
 
+    def forward(self, x: torch.Tensor):
         logits = {}
         x = self.forward_backbone(x)
-        x = self.fpn(x)
-        self.fpn_predict(x, logits)
-
-        selects = self.selector(x, logits)
-        comb_outs = self.combiner(selects)
-        logits['comb_outs'] = comb_outs
-        return logits
-
-        # original backbone (only predict final selected layer)
-        # for name in x:
-        #     hs = x[name]
-
-        # if len(hs.size()) == 4:
-        #     hs = F.adaptive_avg_pool2d(hs, (1, 1))
-        #     hs = hs.flatten(1)
-        # else:
-        #     hs = hs.mean(1)
-        # out = self.classifier(hs)
-        # logits['ori_out'] = logits
-
-        # return logits
+        if not cfg.model.single:
+            x = self.fpn(x)
+            self.fpn_predict(x, logits)
+            selects = self.selector(x, logits)
+            comb_outs = self.combiner(selects)
+            logits['comb_outs'] = comb_outs
+            return logits
+        else:
+            out = self.classifier(x)
+            logits['ori_out'] = out
+            return logits

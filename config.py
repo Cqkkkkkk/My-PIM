@@ -39,6 +39,7 @@ def set_cfg(cfg):
     # ------------------------------------------------------------------------ #
     cfg.model = CN()
     cfg.model.name = 'swin-t'
+    cfg.model.single = False # if set to True, use only backbone to train
     cfg.model.pretrained = None
     cfg.model.fpn_size = 1536
     # For layer 1, 2, 3, 4

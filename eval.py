@@ -4,6 +4,7 @@ import torch.nn.functional as F
 from typing import Union
 import pandas as pd
 import os
+import pdb
 from sklearn.metrics import confusion_matrix
 import matplotlib.pyplot as plt
 
@@ -188,39 +189,43 @@ def evaluate(model, test_loader):
 
             outs = model(datas)
 
+            if not cfg.model.single:
+                for i in range(1, 5):
+                    this_name = "layer" + str(i)
+                    _cal_evalute_metric(corrects, total_samples, outs[this_name].mean(1), labels, this_name, scores, score_names)
             
-            for i in range(1, 5):
-                this_name = "layer" + str(i)
-                _cal_evalute_metric(corrects, total_samples, outs[this_name].mean(1), labels, this_name, scores, score_names)
-        
-            ### Selects for research
-            for name in outs:
-                if "select_" not in name:
-                    continue
-                this_name = name
-                S = outs[name].size(1)
-                logit = outs[name].view(-1, cfg.datasets.num_classes)
-                labels_1 = labels.unsqueeze(1).repeat(1, S).flatten(0)
-                _cal_evalute_metric(corrects, total_samples, logit, labels_1, this_name)
+                ### Selects for research
+                for name in outs:
+                    if "select_" not in name:
+                        continue
+                    this_name = name
+                    S = outs[name].size(1)
+                    logit = outs[name].view(-1, cfg.datasets.num_classes)
+                    labels_1 = labels.unsqueeze(1).repeat(1, S).flatten(0)
+                    _cal_evalute_metric(corrects, total_samples, logit, labels_1, this_name)
+                
+                for name in outs:
+                    if "drop_" not in name:
+                        continue
+                    this_name = name
+                    S = outs[name].size(1)
+                    logit = outs[name].view(-1, cfg.datasets.num_classes)
+                    labels_0 = labels.unsqueeze(1).repeat(1, S).flatten(0)
+                    _cal_evalute_metric(corrects, total_samples, logit, labels_0, this_name)
+
+                # Combiner
+                this_name = "combiner"
+                _cal_evalute_metric(corrects, total_samples, outs["comb_outs"], labels, this_name, scores, score_names)
+                _average_top_k_result(corrects, total_samples, scores, labels)
+                
+            else:
+                for name in outs:
+                    if "ori_out" in name:
+                        this_name = "original"
+                        _cal_evalute_metric(corrects, total_samples, outs["ori_out"], labels, this_name)
             
-            for name in outs:
-                if "drop_" not in name:
-                    continue
-                this_name = name
-                S = outs[name].size(1)
-                logit = outs[name].view(-1, cfg.datasets.num_classes)
-                labels_0 = labels.unsqueeze(1).repeat(1, S).flatten(0)
-                _cal_evalute_metric(corrects, total_samples, logit, labels_0, this_name)
+            
 
-            # Combiner
-            this_name = "combiner"
-            _cal_evalute_metric(corrects, total_samples, outs["comb_outs"], labels, this_name, scores, score_names)
-
-            if "ori_out" in outs:
-                this_name = "original"
-                _cal_evalute_metric(corrects, total_samples, outs["ori_out"], labels, this_name)
-        
-            _average_top_k_result(corrects, total_samples, scores, labels)
 
             eval_progress = (batch_id + 1) / total_batchs
             
