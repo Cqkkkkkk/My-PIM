@@ -69,16 +69,18 @@ class PluginMoodel(nn.Module):
 
         # just original backbone
         if cfg.model.single:
-            # for name in outs:
-            #     pdb.set_trace
-            #     fs_size = outs[name].size()
-            #     if len(fs_size) == 3:
-            #         out_size = fs_size.size(-1)
-            #     elif len(fs_size) == 4:
-            #         out_size = fs_size.size(1)
-            #     else:
-            #         raise ValueError("The size of output dimension of previous must be 3 or 4.")
-            out_size = outs.size(-1)
+            if isinstance(outs, dict):
+                for name in outs:     
+                    fs_size = outs[name].size()
+                    if len(fs_size) == 3:
+                        out_size = fs_size[-1]
+                    elif len(fs_size) == 4:
+                        out_size = fs_size[1]
+                    else:
+                        raise ValueError("The size of output dimension of previous must be 3 or 4.")
+            else:
+                out_size = outs.size(-1)
+
             self.classifier = nn.Linear(out_size, num_classes)
 
         else:
@@ -140,6 +142,19 @@ class PluginMoodel(nn.Module):
             logits['comb_outs'] = comb_outs
             return logits
         else:
-            out = self.classifier(x)
-            logits['ori_out'] = out
+            if not isinstance(x, dict):
+                out = self.classifier(x)
+                logits['ori_out'] = out
+            else:
+                for name in x:
+                    hs = x[name]
+
+                if len(hs.size()) == 4:
+                    hs = F.adaptive_avg_pool2d(hs, (1, 1))
+                    hs = hs.flatten(1)
+                else:
+                    hs = hs.mean(1)
+                out = self.classifier(hs)
+                logits['ori_out'] = out
+
             return logits

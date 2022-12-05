@@ -14,4 +14,7 @@
 # python main.py --cfg configs/SwinT-2HopConv.yaml
 
 # Single-Res50
-python main.py --cfg configs/Single-Res50.yaml
+# python main.py --cfg configs/Single-Res50.yaml
+
+# Single-Swin-T
+python main.py --cfg configs/Single-SwinT.yaml
