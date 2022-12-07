@@ -33,6 +33,8 @@ conda env create -f environment.yml
 bash train.sh
 ```
 
+注意，项目使用了[wandb](https://wandb.ai/site)作为训练以及可视化的工具，请在`configs`文件夹中的config文件中，将`wandb.entity`修改成自己的entity，见[这里](https://docs.wandb.ai/quickstart)，或者直接关掉`wandb`，将`wandb.use`设置为`False`即可。
+
 ## Inference
 
 模型的inference可以通过`infer.sh`中的指令实现，其中inference只实现了基础PIM，PIM-2Hop，PIM-APPNP以及PIM-GPR这几个准确率最好的模型。
