@@ -33,13 +33,14 @@ def set_environment(tlogger):
 
     backbone = timm.create_model('swin_large_patch4_window12_384_in22k', pretrained=True)
     model = PluginMoodel(backbone=backbone,
-                        return_nodes=None,
-                        img_size=cfg.datasets.data_size,
-                        fpn_size=cfg.model.fpn_size,
-                        proj_type='Linear',
-                        upsample_type='Conv',
-                        num_classes=cfg.datasets.num_classes,
-                        num_selects=dict(zip(cfg.model.num_selects_layer_names, cfg.model.num_selects)))
+                                return_nodes=None,
+                                img_size=cfg.datasets.data_size,
+                                fpn_size=cfg.model.fpn_size,
+                                proj_type='Linear',
+                                upsample_type='Conv',
+                                num_classes=cfg.datasets.num_classes,
+                                num_selects=dict(zip(cfg.model.num_selects_layer_names, cfg.model.num_selects))
+                            ).to(cfg.train.device)
 
     checkpoint = torch.load(cfg.model.pretrained, map_location=torch.device('cpu'))
     model.load_state_dict(checkpoint['model'])

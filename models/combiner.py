@@ -63,8 +63,8 @@ class Combiner(nn.Module):
         self.K = 1
         self.gamma_gpr = self.alpha_ppnp * (1 - self.alpha_ppnp) ** torch.arange(self.K + 1)
         self.gamma_gpr[-1] = (1 - self.alpha_ppnp) ** self.K
-
-        self.gamma_gpr = nn.parameter.Parameter(self.gamma_gpr)
+        if cfg.model.combiner == 'gpr':
+            self.gamma_gpr = nn.parameter.Parameter(self.gamma_gpr)
         
 
     def forward(self, x):
