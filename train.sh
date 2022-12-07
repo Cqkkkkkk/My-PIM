@@ -17,4 +17,12 @@
 # python main.py --cfg configs/Single-Res50.yaml
 
 # Single-Swin-T
-python main.py --cfg configs/Single-SwinT.yaml
+# python main.py --cfg configs/Single-SwinT.yaml
+
+# SwinT-APPNP
+# python main.py --cfg configs/SwinT-APPNP.yaml
+
+# SwinT-GPR
+python main.py --cfg configs/SwinT-GPR.yaml
+
+

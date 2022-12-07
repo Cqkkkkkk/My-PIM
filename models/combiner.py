@@ -59,6 +59,14 @@ class Combiner(nn.Module):
         self.fc = nn.Linear(self.proj_size, num_classes)
         self.tanh = nn.Tanh()
 
+        self.alpha_ppnp = cfg.model.alpha_ppnp
+        self.K = 1
+        self.gamma_gpr = self.alpha_ppnp * (1 - self.alpha_ppnp) ** torch.arange(self.K + 1)
+        self.gamma_gpr[-1] = (1 - self.alpha_ppnp) ** self.K
+
+        self.gamma_gpr = nn.parameter.Parameter(self.gamma_gpr)
+        
+
     def forward(self, x):
 
         hs = []
@@ -105,7 +113,27 @@ class Combiner(nn.Module):
             hs = F.relu(hs)
             hs = self.lin2(hs)
             hs = torch.bmm(A1, hs)
-            
+            hs = torch.transpose(hs, 1, 2)
+
+        elif cfg.model.combiner == 'appnp':
+            hs = torch.transpose(hs, 1, 2)
+            hs = self.lin(hs)
+            hs = self.alpha_ppnp * hs + (1 - self.alpha_ppnp) * torch.bmm(A1, hs)
+            hs = torch.transpose(hs, 1, 2)
+
+        elif cfg.model.combiner == 'gpr':
+            hs = torch.transpose(hs, 1, 2)
+            hs = self.lin(hs)
+
+            res = []
+            for _ in range(self.K):
+                hs = torch.bmm(A1, hs)
+                res.append(hs)
+
+            hs = self.gamma_gpr[0] * res[0]
+            for i in range(1, self.K):
+                hs =  hs + self.gamma_gpr[i] * res[i]
+
             hs = torch.transpose(hs, 1, 2)
 
         hs = self.batch_norm1(hs)
