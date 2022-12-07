@@ -29,6 +29,7 @@ def train_epoch(epoch, model, scaler, amp_context, optimizer, scheduler, train_l
 
         with amp_context():
             outs = model(datas)
+            pdb.set_trace()
             loss = 0.
 
             for name in outs:
