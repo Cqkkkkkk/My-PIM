@@ -27,16 +27,19 @@ conda env create -f environment.yml
 
 
 
-
-
 ## 训练
 训练所有模型的指令均已包含在`train.sh`中，相应的配置文件在`configs`文件目录下。训练完毕后，最佳的模型将被存储。
+```
+bash train.sh
+```
 
 ## Inference
 
 模型的inference可以通过`infer.sh`中的指令实现，其中inference只实现了基础PIM，PIM-2Hop，PIM-APPNP以及PIM-GPR这几个准确率最好的模型。
 
-
+```
+bash infer.sh
+```
 
 ---
 
