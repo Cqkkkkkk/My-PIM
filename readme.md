@@ -9,6 +9,24 @@
 ```
 conda env create -f environment.yml
 ```
+
+## 处理数据集
+
+将CUB200-2011数据集中的数据提前划分至两个文件夹内，并将路径填写到config文件，例如
+```
+datasets:
+  train_root: ../datasets/CUB/sortedImages/train/
+  val_root: ../datasets/CUB/sortedImages/test/
+```
+表示训练用的数据在`train_root`指定的文件夹下，测试用的数据在`val_root`指定的文件夹下。
+
+`split_dataset.py`可以用于将原始数据集划分成两个文件夹：
+```
+python split_dataset.py --dir <PATH TO CUB-200-2011>
+```
+
+
+
 ## 模型
 可用的模型包括：
 
